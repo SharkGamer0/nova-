@@ -1,0 +1,6 @@
+{
+  "name": "NovaForge Launcher",
+  "description": "Minimalist, intelligent, workspace-based Android launcher built around unique interactions, Universal Command Bar, and Workspace Capsules.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
