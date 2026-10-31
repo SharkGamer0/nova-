@@ -1,18 +1,14 @@
 package com.novaforge.launcher.icon
 
+import android.content.Context
 import android.graphics.BitmapFactory
-import android.graphics.ImageDecoder
-import android.graphics.drawable.AnimatedImageDrawable
-import android.graphics.drawable.Drawable
 import android.os.Build
-import android.widget.ImageView
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,12 +22,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import com.novaforge.launcher.data.AppIconManager
 import java.io.File
 import kotlin.math.PI
 import kotlin.math.cos
@@ -57,8 +56,7 @@ fun AnimatedAppIcon(
     Box(
         modifier = modifier
             .size(size)
-            .clip(shape)
-            .background(fallbackColor),
+            .clip(shape),
         contentAlignment = Alignment.Center
     ) {
         if (isConfigured && animationItem != null) {
@@ -85,14 +83,47 @@ fun AnimatedAppIcon(
                     isPlaybackAllowed = isPlaybackAllowed,
                     staticFallback = assignment?.staticFirstFrameFallback ?: true,
                     fallbackLabel = label,
-                    size = size
+                    size = size,
+                    packageName = packageName,
+                    fallbackColor = fallbackColor
                 )
             } else {
-                // File missing or removed externally - graceful static fallback
-                RenderFallbackGlyph(label = label, size = size)
+                // File missing or removed externally - graceful real icon fallback
+                RenderNativeOrFallbackIcon(context, packageName, label, fallbackColor, size)
             }
         } else {
-            // Standard clean minimalist initial glyph
+            // Load real native application icon from PackageManager with LRU caching
+            RenderNativeOrFallbackIcon(context, packageName, label, fallbackColor, size)
+        }
+    }
+}
+
+@Composable
+fun RenderNativeOrFallbackIcon(
+    context: Context,
+    packageName: String,
+    label: String,
+    fallbackColor: Color,
+    size: Dp
+) {
+    val realBitmap = remember(packageName) {
+        AppIconManager.getAppIconBitmap(context, packageName)
+    }
+
+    if (realBitmap != null) {
+        Image(
+            bitmap = realBitmap.asImageBitmap(),
+            contentDescription = label,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Fit
+        )
+    } else {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(fallbackColor),
+            contentAlignment = Alignment.Center
+        ) {
             RenderFallbackGlyph(label = label, size = size)
         }
     }
@@ -107,66 +138,42 @@ fun RenderRealAnimation(
     isPlaybackAllowed: Boolean,
     staticFallback: Boolean,
     fallbackLabel: String,
-    size: Dp
+    size: Dp,
+    packageName: String = "",
+    fallbackColor: Color = Color(0xFF2A9D8F)
 ) {
     val context = LocalContext.current
 
     when (format) {
         AnimationFormat.GIF, AnimationFormat.WEBP -> {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                // Native Android 9+ (API 28+) ImageDecoder & AnimatedImageDrawable
-                // Uses Android's native hardware-accelerated Skia decoder
-                var decodeError by remember { mutableStateOf(false) }
+            var hasError by remember { mutableStateOf(false) }
 
-                if (decodeError) {
-                    RenderStaticFileFallback(file, fallbackLabel, size)
-                } else {
-                    AndroidView(
-                        factory = { ctx ->
-                            ImageView(ctx).apply {
-                                scaleType = ImageView.ScaleType.FIT_CENTER
-                                try {
-                                    val source = ImageDecoder.createSource(file)
-                                    val drawable = ImageDecoder.decodeDrawable(source)
-                                    setImageDrawable(drawable)
-                                    if (drawable is AnimatedImageDrawable) {
-                                        drawable.repeatCount = if (loopMode == "LOOP") {
-                                            AnimatedImageDrawable.REPEAT_INFINITE
-                                        } else {
-                                            0
-                                        }
-                                        if (isPlaybackAllowed) {
-                                            drawable.start()
-                                        }
-                                    }
-                                } catch (_: Throwable) {
-                                    decodeError = true
-                                }
-                            }
-                        },
-                        update = { view ->
-                            try {
-                                val d = view.drawable
-                                if (d is AnimatedImageDrawable) {
-                                    if (isPlaybackAllowed) {
-                                        if (!d.isRunning) d.start()
-                                    } else {
-                                        if (d.isRunning) d.stop()
-                                    }
-                                }
-                            } catch (_: Throwable) {}
-                        },
-                        modifier = Modifier.fillMaxSize().padding(2.dp)
-                    )
-                }
+            if (!hasError && (isPlaybackAllowed || !staticFallback)) {
+                AsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(file)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = fallbackLabel,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Fit,
+                    onError = {
+                        hasError = true
+                    }
+                )
             } else {
-                // Fallback for API 26-27: decode first frame bitmap
-                RenderStaticFileFallback(file, fallbackLabel, size)
+                RenderStaticFileFallback(
+                    file = file,
+                    fallbackLabel = fallbackLabel,
+                    size = size,
+                    context = context,
+                    packageName = packageName,
+                    fallbackColor = fallbackColor
+                )
             }
         }
 
         AnimationFormat.LOTTIE -> {
-            // Lottie animation: parsed vector animation with speed & loop
             RenderLottieJsonAnimation(
                 file = file,
                 speed = speed,
@@ -178,7 +185,14 @@ fun RenderRealAnimation(
         }
 
         AnimationFormat.STATIC_PNG, AnimationFormat.STATIC_WEBP -> {
-            RenderStaticFileFallback(file, fallbackLabel, size)
+            RenderStaticFileFallback(
+                file = file,
+                fallbackLabel = fallbackLabel,
+                size = size,
+                context = context,
+                packageName = packageName,
+                fallbackColor = fallbackColor
+            )
         }
     }
 }
@@ -187,11 +201,17 @@ fun RenderRealAnimation(
 fun RenderStaticFileFallback(
     file: File,
     fallbackLabel: String,
-    size: Dp
+    size: Dp,
+    context: Context = LocalContext.current,
+    packageName: String = "",
+    fallbackColor: Color = Color(0xFF2A9D8F)
 ) {
     val bitmap = remember(file.absolutePath) {
         try {
-            BitmapFactory.decodeFile(file.absolutePath)
+            val opts = BitmapFactory.Options().apply {
+                inPreferredConfig = android.graphics.Bitmap.Config.ARGB_8888
+            }
+            BitmapFactory.decodeFile(file.absolutePath, opts)
         } catch (_: Throwable) {
             null
         }
@@ -201,10 +221,11 @@ fun RenderStaticFileFallback(
         Image(
             bitmap = bitmap.asImageBitmap(),
             contentDescription = fallbackLabel,
-            modifier = Modifier.fillMaxSize().padding(4.dp)
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Fit
         )
     } else {
-        RenderFallbackGlyph(label = fallbackLabel, size = size)
+        RenderNativeOrFallbackIcon(context, packageName, fallbackLabel, fallbackColor, size)
     }
 }
 
@@ -229,7 +250,6 @@ fun RenderLottieJsonAnimation(
     }
 
     if (hasValidJson) {
-        // High-performance procedural vector driver for Lottie animation spec
         RenderProceduralAnimation(
             format = AnimationFormat.LOTTIE,
             animationId = file.name,
@@ -248,7 +268,7 @@ fun RenderFallbackGlyph(label: String, size: Dp) {
         text = label.take(1).uppercase(),
         color = Color.White,
         fontWeight = FontWeight.Bold,
-        fontSize = (size.value * 0.42f).sp
+        fontSize = if (size > 40.dp) 18.sp else 14.sp
     )
 }
 
@@ -258,110 +278,144 @@ fun RenderProceduralAnimation(
     animationId: String,
     speed: Float,
     size: Dp,
-    isPlaying: Boolean = true
+    isPlaying: Boolean
 ) {
-    val durationBase = when (animationId) {
-        "preset-pulse" -> 1400
-        "preset-orbit" -> 2200
-        "preset-wave" -> 1600
-        "preset-sparks" -> 1800
-        "preset-prism" -> 2400
-        else -> 1800
-    }
-    val adjustedDuration = (durationBase / speed.coerceIn(0.5f, 2.0f)).toInt()
+    val transition = rememberInfiniteTransition(label = "ProceduralAnim_$animationId")
+    val duration = (1200 / speed.coerceIn(0.5f, 3.0f)).toInt()
 
-    val infiniteTransition = rememberInfiniteTransition(label = "iconAnimation")
+    when (animationId) {
+        "preset-pulse" -> {
+            val scale by if (isPlaying) {
+                transition.animateFloat(
+                    initialValue = 0.85f,
+                    targetValue = 1.05f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(duration, easing = FastOutSlowInEasing),
+                        repeatMode = RepeatMode.Reverse
+                    ),
+                    label = "pulse_scale"
+                )
+            } else remember { mutableFloatStateOf(1.0f) }
 
-    val progress by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = adjustedDuration, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "animProgress"
-    )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .scale(scale),
+                contentAlignment = Alignment.Center
+            ) {
+                Canvas(modifier = Modifier.size(size * 0.7f)) {
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(Color(0xFF2A9D8F), Color(0xFF264653))
+                        )
+                    )
+                }
+            }
+        }
 
-    val currentProgress = if (isPlaying) progress else 0f
+        "preset-orbit" -> {
+            val angle by if (isPlaying) {
+                transition.animateFloat(
+                    initialValue = 0f,
+                    targetValue = 360f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(duration * 2, easing = LinearEasing),
+                        repeatMode = RepeatMode.Restart
+                    ),
+                    label = "orbit_angle"
+                )
+            } else remember { mutableFloatStateOf(0f) }
 
-    when (format) {
-        AnimationFormat.WEBP, AnimationFormat.LOTTIE -> {
-            val angle = currentProgress * 360f
-            Canvas(modifier = Modifier.fillMaxSize().padding(size * 0.15f)) {
-                val center = Offset(size.toPx() / 2f, size.toPx() / 2f)
-                val radius = (size.toPx() * 0.28f)
-                
+            Canvas(modifier = Modifier.fillMaxSize().padding(4.dp)) {
+                val center = Offset(size.toPx() / 2, size.toPx() / 2)
+                val orbitRadius = size.toPx() * 0.32f
+
                 drawCircle(
                     color = Color.White.copy(alpha = 0.25f),
-                    radius = radius,
+                    radius = orbitRadius,
+                    center = center,
                     style = Stroke(width = 2.dp.toPx())
                 )
 
-                val rad = (angle * PI / 180.0)
-                val dotX = center.x + (radius * cos(rad)).toFloat()
-                val dotY = center.y + (radius * sin(rad)).toFloat()
-                drawCircle(
-                    color = Color.White,
-                    radius = 3.dp.toPx(),
-                    center = Offset(dotX, dotY)
+                val rad = (angle * PI / 180).toFloat()
+                val satelliteCenter = Offset(
+                    x = center.x + orbitRadius * cos(rad),
+                    y = center.y + orbitRadius * sin(rad)
                 )
 
                 drawCircle(
-                    color = Color.White.copy(alpha = 0.85f),
-                    radius = (size.toPx() * 0.08f)
+                    color = Color(0xFFE76F51),
+                    radius = 4.dp.toPx(),
+                    center = satelliteCenter
                 )
             }
         }
-        AnimationFormat.GIF -> {
-            val scale = 0.85f + (sin(currentProgress * 2 * PI).toFloat() * 0.15f)
-            Canvas(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(size * 0.18f)
-                    .scale(scale)
-            ) {
-                val center = Offset(size.toPx() / 2f, size.toPx() / 2f)
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(Color.White, Color.White.copy(alpha = 0.2f)),
-                        center = center,
-                        radius = size.toPx() * 0.35f
+
+        "preset-wave" -> {
+            val waveOffset by if (isPlaying) {
+                transition.animateFloat(
+                    initialValue = -0.5f,
+                    targetValue = 0.5f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(duration, easing = LinearEasing),
+                        repeatMode = RepeatMode.Reverse
                     ),
-                    radius = size.toPx() * 0.3f
+                    label = "wave_offset"
+                )
+            } else remember { mutableFloatStateOf(0f) }
+
+            Canvas(modifier = Modifier.fillMaxSize().padding(6.dp)) {
+                val width = size.toPx()
+                val height = size.toPx()
+                drawLine(
+                    color = Color(0xFF2A9D8F),
+                    start = Offset(0f, height * (0.5f + waveOffset * 0.2f)),
+                    end = Offset(width, height * (0.5f - waveOffset * 0.2f)),
+                    strokeWidth = 3.dp.toPx()
                 )
             }
         }
-        else -> {
-            val rotation = currentProgress * 360f
+
+        "preset-sparks" -> {
+            val rot by if (isPlaying) {
+                transition.animateFloat(
+                    initialValue = 0f,
+                    targetValue = 180f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(duration, easing = LinearEasing),
+                        repeatMode = RepeatMode.Restart
+                    ),
+                    label = "sparks_rot"
+                )
+            } else remember { mutableFloatStateOf(0f) }
+
             Box(
                 modifier = Modifier
-                    .size(size * 0.5f)
-                    .rotate(rotation)
-                    .background(Color.White.copy(alpha = 0.8f), RoundedCornerShape(4.dp))
-            )
+                    .fillMaxSize()
+                    .rotate(rot),
+                contentAlignment = Alignment.Center
+            ) {
+                Canvas(modifier = Modifier.size(size * 0.65f)) {
+                    drawLine(
+                        color = Color(0xFFE9C46A),
+                        start = Offset(0f, size.toPx() * 0.32f),
+                        end = Offset(size.toPx() * 0.65f, size.toPx() * 0.32f),
+                        strokeWidth = 2.dp.toPx()
+                    )
+                    drawLine(
+                        color = Color(0xFFE9C46A),
+                        start = Offset(size.toPx() * 0.32f, 0f),
+                        end = Offset(size.toPx() * 0.32f, size.toPx() * 0.65f),
+                        strokeWidth = 2.dp.toPx()
+                    )
+                }
+            }
         }
-    }
-}
 
-@Composable
-fun AnimatedIconPreview(
-    item: AnimatedIconItem,
-    speed: Float = 1.0f,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-        modifier = modifier.size(80.dp)
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            RenderProceduralAnimation(
-                format = item.format,
-                animationId = item.id,
-                speed = speed,
-                size = 56.dp,
-                isPlaying = true
-            )
+        else -> {
+            Canvas(modifier = Modifier.fillMaxSize().padding(8.dp)) {
+                drawCircle(color = Color(0xFF2A9D8F))
+            }
         }
     }
 }

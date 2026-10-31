@@ -238,29 +238,38 @@ class AnimationRepository(
     }
 
     suspend fun importAnimationFromUri(uri: Uri, userGivenName: String? = null): Result<AnimatedIconItem> = withContext(Dispatchers.IO) {
+        var tempDestFile: File? = null
         try {
+            // Safely attempt to persist URI permission if supported by the provider
+            try {
+                context.contentResolver.takePersistableUriPermission(
+                    uri,
+                    android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            } catch (_: Exception) {}
+
             val contentResolver = context.contentResolver
             val mimeType = contentResolver.getType(uri)?.lowercase() ?: ""
             val fileName = uri.lastPathSegment?.substringAfterLast('/') ?: "imported_${System.currentTimeMillis()}"
 
             val targetFileId = UUID.randomUUID().toString()
-            val tempDestFile = File(iconsDir, "temp_$targetFileId")
+            tempDestFile = File(iconsDir, "temp_$targetFileId")
 
-            // Copy stream into temporary file for inspection
+            // Copy stream into temporary file with 8KB buffer for inspection
             contentResolver.openInputStream(uri)?.use { input ->
                 FileOutputStream(tempDestFile).use { output ->
-                    input.copyTo(output)
+                    input.copyTo(output, bufferSize = 8192)
                 }
-            } ?: return@withContext Result.failure(Exception("Cannot open file stream for $uri"))
+            } ?: return@withContext Result.failure(Exception("Cannot open file stream for: $fileName"))
 
             val fileSize = tempDestFile.length()
             if (fileSize == 0L) {
                 tempDestFile.delete()
-                return@withContext Result.failure(Exception("File is empty (0 bytes)"))
+                return@withContext Result.failure(Exception("Imported file is empty (0 bytes)"))
             }
             if (fileSize > MAX_ANIMATION_FILE_SIZE) {
                 tempDestFile.delete()
-                return@withContext Result.failure(Exception("File size exceeds 15 MB limit: ${(fileSize / 1024 / 1024)} MB"))
+                return@withContext Result.failure(Exception("File size exceeds 15 MB limit (${(fileSize / (1024 * 1024))} MB)"))
             }
 
             // Read magic bytes (first 16 bytes)
@@ -268,11 +277,16 @@ class AnimationRepository(
             tempDestFile.inputStream().use { it.read(header) }
 
             // Validate header and determine exact format
-            val isGif = header.size >= 6 && header[0] == 'G'.code.toByte() && header[1] == 'I'.code.toByte() && header[2] == 'F'.code.toByte()
+            val isGif = header.size >= 6 &&
+                    header[0] == 'G'.code.toByte() && header[1] == 'I'.code.toByte() && header[2] == 'F'.code.toByte() &&
+                    header[3] == '8'.code.toByte() && (header[4] == '7'.code.toByte() || header[4] == '9'.code.toByte()) && header[5] == 'a'.code.toByte()
+
             val isWebP = header.size >= 12 &&
                     header[0] == 'R'.code.toByte() && header[1] == 'I'.code.toByte() && header[2] == 'F'.code.toByte() && header[3] == 'F'.code.toByte() &&
                     header[8] == 'W'.code.toByte() && header[9] == 'E'.code.toByte() && header[10] == 'B'.code.toByte() && header[11] == 'P'.code.toByte()
-            val isPng = header.size >= 4 && (header[0].toInt() and 0xFF) == 0x89 && header[1] == 'P'.code.toByte() && header[2] == 'N'.code.toByte() && header[3] == 'G'.code.toByte()
+
+            val isPng = header.size >= 4 &&
+                    (header[0].toInt() and 0xFF) == 0x89 && header[1] == 'P'.code.toByte() && header[2] == 'N'.code.toByte() && header[3] == 'G'.code.toByte()
 
             var isLottie = false
             var lottieWidth = 128
@@ -284,7 +298,7 @@ class AnimationRepository(
                 try {
                     val textContent = tempDestFile.readText()
                     val json = JSONObject(textContent)
-                    if (json.has("v") || json.has("layers") || json.has("assets")) {
+                    if (json.has("v") || json.has("layers") || json.has("assets") || json.has("fr")) {
                         isLottie = true
                         lottieWidth = json.optInt("w", 128)
                         lottieHeight = json.optInt("h", 128)
@@ -309,27 +323,32 @@ class AnimationRepository(
                 fileName.endsWith(".png", ignoreCase = true) -> AnimationFormat.STATIC_PNG
                 else -> {
                     tempDestFile.delete()
-                    return@withContext Result.failure(Exception("Unsupported or corrupt animation file format. Expected GIF, WebP, Lottie JSON, or PNG."))
+                    return@withContext Result.failure(Exception("Unsupported file format. Please select a valid GIF, WebP, Lottie JSON, or PNG."))
                 }
             }
 
-            // Probe image dimensions for bitmap types
+            // Probe image dimensions safely for bitmap types
             var width = lottieWidth
             var height = lottieHeight
             var duration = lottieDuration
 
             if (format != AnimationFormat.LOTTIE) {
-                val opts = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                android.graphics.BitmapFactory.decodeFile(tempDestFile.absolutePath, opts)
-                if (opts.outWidth > 0 && opts.outHeight > 0) {
-                    width = opts.outWidth
-                    height = opts.outHeight
+                try {
+                    val opts = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                    android.graphics.BitmapFactory.decodeFile(tempDestFile.absolutePath, opts)
+                    if (opts.outWidth > 0 && opts.outHeight > 0) {
+                        width = opts.outWidth
+                        height = opts.outHeight
+                    }
+                } catch (_: Throwable) {
+                    width = 128
+                    height = 128
                 }
                 duration = if (format == AnimationFormat.GIF) 1400L else 2000L
             }
 
             val cleanName = userGivenName?.takeIf { it.isNotBlank() }
-                ?: fileName.substringBeforeLast('.').replace('_', ' ').replace('-', ' ').capitalize()
+                ?: fileName.substringBeforeLast('.').replace('_', ' ').replace('-', ' ').replaceFirstChar { it.uppercase() }
 
             // Duplicate detection: check if existing animation in library matches name and size
             val existing = _animations.value.find { it.name.equals(cleanName, ignoreCase = true) && it.fileSizeBytes == fileSize }
@@ -340,7 +359,10 @@ class AnimationRepository(
 
             val targetFileName = "$targetFileId.${format.extension}"
             val finalDestFile = File(iconsDir, targetFileName)
-            tempDestFile.renameTo(finalDestFile)
+            if (!tempDestFile.renameTo(finalDestFile)) {
+                tempDestFile.copyTo(finalDestFile, overwrite = true)
+                tempDestFile.delete()
+            }
 
             val item = AnimatedIconItem(
                 id = targetFileId,
@@ -360,6 +382,7 @@ class AnimationRepository(
             saveLibrary()
             Result.success(item)
         } catch (e: Exception) {
+            tempDestFile?.delete()
             Result.failure(e)
         }
     }

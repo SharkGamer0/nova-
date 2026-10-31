@@ -138,6 +138,7 @@ test('Android project contains all critical source files and resources', async (
 
   // Required classes
   assert.ok(filePaths.has('app/src/main/java/com/novaforge/launcher/NovaForgeApp.kt'), 'Missing NovaForgeApp.kt');
+  assert.ok(filePaths.has('app/src/main/java/com/novaforge/launcher/data/AppIconManager.kt'), 'Missing AppIconManager.kt');
   assert.ok(filePaths.has('app/src/main/java/com/novaforge/launcher/data/AppRepository.kt'), 'Missing AppRepository.kt');
   assert.ok(filePaths.has('app/src/main/java/com/novaforge/launcher/data/LauncherPreferences.kt'), 'Missing LauncherPreferences.kt');
   assert.ok(filePaths.has('app/src/main/java/com/novaforge/launcher/data/RealDataProviders.kt'), 'Missing RealDataProviders.kt');

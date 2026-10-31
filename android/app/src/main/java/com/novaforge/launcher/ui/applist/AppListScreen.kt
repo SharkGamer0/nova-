@@ -224,9 +224,6 @@ fun AppListScreen(
                         }
 
                         items(appList, key = { it.packageName }) { app ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
                             val assignment = iconAssignments[app.packageName]
                             val animItem = if (assignment != null) animations.find { it.id == assignment.animationId } else null
                             Row(

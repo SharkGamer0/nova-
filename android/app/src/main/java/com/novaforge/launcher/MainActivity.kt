@@ -4,9 +4,9 @@ import android.Manifest
 import android.appwidget.AppWidgetHost
 import android.appwidget.AppWidgetManager
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
+import android.view.WindowManager
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -14,9 +14,11 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.novaforge.launcher.data.ScreenTimeRepository
 import com.novaforge.launcher.service.MediaControlHelper
@@ -44,9 +46,9 @@ class MainActivity : ComponentActivity() {
     private val calendarPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
-        val viewModel: LauncherViewModel = androidx.lifecycle.ViewModelProvider(this)[LauncherViewModel::class.java]
+        val vm: LauncherViewModel = androidx.lifecycle.ViewModelProvider(this)[LauncherViewModel::class.java]
         if (isGranted) {
-            viewModel.loadRealData()
+            vm.loadRealData()
             Toast.makeText(this, "Calendar events synced", Toast.LENGTH_SHORT).show()
         } else {
             Toast.makeText(this, "Calendar permission denied. Showing demo agenda.", Toast.LENGTH_SHORT).show()
@@ -58,15 +60,36 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == RESULT_OK && pendingWidgetId != -1) {
-            val viewModel: LauncherViewModel = androidx.lifecycle.ViewModelProvider(this)[LauncherViewModel::class.java]
-            widgetBindingManager.handleWidgetSelectionResult(
-                appWidgetId = pendingWidgetId,
-                data = result.data,
-                onWidgetReady = { widget -> viewModel.addWidget(widget) },
-                onConfigureRequired = { configIntent, _ ->
-                    configureWidgetLauncher.launch(configIntent)
+            val returnedId = result.data?.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, pendingWidgetId) ?: pendingWidgetId
+            pendingWidgetId = returnedId
+            val info = appWidgetManager.getAppWidgetInfo(pendingWidgetId)
+            if (info != null) {
+                val canBind = appWidgetManager.bindAppWidgetIdIfAllowed(pendingWidgetId, info.provider)
+                if (canBind) {
+                    checkAndLaunchWidgetConfiguration(pendingWidgetId)
+                } else {
+                    val bindIntent = Intent(AppWidgetManager.ACTION_APPWIDGET_BIND).apply {
+                        putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, pendingWidgetId)
+                        putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, info.provider)
+                    }
+                    bindWidgetLauncher.launch(bindIntent)
                 }
-            )
+            } else {
+                appWidgetHost.deleteAppWidgetId(pendingWidgetId)
+                pendingWidgetId = -1
+            }
+        } else if (pendingWidgetId != -1) {
+            appWidgetHost.deleteAppWidgetId(pendingWidgetId)
+            pendingWidgetId = -1
+        }
+    }
+
+    // Result launcher for widget binding permission
+    private val bindWidgetLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == RESULT_OK && pendingWidgetId != -1) {
+            checkAndLaunchWidgetConfiguration(pendingWidgetId)
         } else if (pendingWidgetId != -1) {
             appWidgetHost.deleteAppWidgetId(pendingWidgetId)
             pendingWidgetId = -1
@@ -77,11 +100,11 @@ class MainActivity : ComponentActivity() {
     private val configureWidgetLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        val viewModel: LauncherViewModel = androidx.lifecycle.ViewModelProvider(this)[LauncherViewModel::class.java]
+        val vm: LauncherViewModel = androidx.lifecycle.ViewModelProvider(this)[LauncherViewModel::class.java]
         if (result.resultCode == RESULT_OK && pendingWidgetId != -1) {
             val info = appWidgetManager.getAppWidgetInfo(pendingWidgetId)
             if (info != null) {
-                viewModel.addWidget(
+                vm.addWidget(
                     com.novaforge.launcher.data.model.LauncherWidget(
                         appWidgetId = pendingWidgetId,
                         providerPackage = info.provider.packageName,
@@ -91,8 +114,37 @@ class MainActivity : ComponentActivity() {
                     )
                 )
             }
+            pendingWidgetId = -1
         } else if (pendingWidgetId != -1) {
             appWidgetHost.deleteAppWidgetId(pendingWidgetId)
+            pendingWidgetId = -1
+        }
+    }
+
+    private fun checkAndLaunchWidgetConfiguration(appWidgetId: Int) {
+        val info = appWidgetManager.getAppWidgetInfo(appWidgetId)
+        if (info == null) {
+            appWidgetHost.deleteAppWidgetId(appWidgetId)
+            pendingWidgetId = -1
+            return
+        }
+        val vm: LauncherViewModel = androidx.lifecycle.ViewModelProvider(this)[LauncherViewModel::class.java]
+        if (info.configure != null) {
+            val configIntent = Intent(AppWidgetManager.ACTION_APPWIDGET_CONFIGURE).apply {
+                component = info.configure
+                putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
+            }
+            configureWidgetLauncher.launch(configIntent)
+        } else {
+            vm.addWidget(
+                com.novaforge.launcher.data.model.LauncherWidget(
+                    appWidgetId = appWidgetId,
+                    providerPackage = info.provider.packageName,
+                    providerClass = info.provider.className,
+                    cellWidth = 2,
+                    cellHeight = 2
+                )
+            )
             pendingWidgetId = -1
         }
     }
@@ -100,6 +152,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Enable native Android live wallpaper rendering behind the launcher
+        window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
+        window.decorView.setBackgroundColor(android.graphics.Color.TRANSPARENT)
 
         appWidgetManager = AppWidgetManager.getInstance(this)
         appWidgetHost = NovaForgeAppWidgetHost(this, APPWIDGET_HOST_ID)
@@ -111,9 +167,20 @@ class MainActivity : ComponentActivity() {
             val viewModel: LauncherViewModel = viewModel()
             val themeMode by viewModel.themeMode.collectAsState()
             val accentColor by viewModel.accentColor.collectAsState()
+            val userMsg by viewModel.userMessage.collectAsState()
+
+            LaunchedEffect(userMsg) {
+                userMsg?.let { msg ->
+                    Toast.makeText(this@MainActivity, msg, Toast.LENGTH_SHORT).show()
+                    viewModel.clearUserMessage()
+                }
+            }
 
             NovaForgeTheme(themeMode = themeMode, accentColor = accentColor) {
-                Surface(modifier = Modifier.fillMaxSize()) {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = Color.Transparent
+                ) {
                     LauncherRootScreen(
                         viewModel = viewModel,
                         appWidgetHost = appWidgetHost,
@@ -181,51 +248,29 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun openAppInfo(packageName: String) {
-        try {
-            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                data = Uri.fromParts("package", packageName, null)
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            startActivity(intent)
-        } catch (_: Exception) {
-            Toast.makeText(this, "Unable to open app info", Toast.LENGTH_SHORT).show()
+        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+            data = android.net.Uri.fromParts("package", packageName, null)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
+        startActivity(intent)
     }
 
     private fun requestUninstall(packageName: String) {
-        try {
-            val intent = Intent(Intent.ACTION_DELETE).apply {
-                data = Uri.fromParts("package", packageName, null)
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            startActivity(intent)
-        } catch (_: Exception) {
-            Toast.makeText(this, "Unable to request uninstall", Toast.LENGTH_SHORT).show()
+        val intent = Intent(Intent.ACTION_DELETE).apply {
+            data = android.net.Uri.fromParts("package", packageName, null)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
+        startActivity(intent)
     }
 
     private fun handleSystemSettingCommand(setting: String) {
-        try {
-            when (setting) {
-                "wifi" -> startActivity(Intent(Settings.ACTION_WIFI_SETTINGS))
-                "bluetooth" -> startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS))
-                "battery" -> startActivity(Intent(Settings.ACTION_BATTERY_SAVER_SETTINGS))
-                "display" -> startActivity(Intent(Settings.ACTION_DISPLAY_SETTINGS))
-                "wallpaper" -> startActivity(Intent.createChooser(Intent(Intent.ACTION_SET_WALLPAPER), "Wallpaper"))
-                "lock" -> Toast.makeText(this, "Lock action triggered (Standard Android lock screen)", Toast.LENGTH_SHORT).show()
-                else -> startActivity(Intent(Settings.ACTION_SETTINGS))
-            }
-        } catch (_: Exception) {
-            Toast.makeText(this, "Unable to open system setting for $setting", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    @Deprecated("Deprecated in Java")
-    override fun onBackPressed() {
-        // Enforce HOME launcher guarantee: back button never closes NovaForge, always returns to Home workspace
-        val viewModel: LauncherViewModel = androidx.lifecycle.ViewModelProvider(this)[LauncherViewModel::class.java]
-        if (!viewModel.isAtHomeScreen()) {
-            viewModel.navigateToHome()
+        when (setting.lowercase()) {
+            "wifi" -> startActivity(Intent(Settings.ACTION_WIFI_SETTINGS).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) })
+            "bluetooth" -> startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) })
+            "battery" -> startActivity(Intent(Intent.ACTION_POWER_USAGE_SUMMARY).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) })
+            "display" -> startActivity(Intent(Settings.ACTION_DISPLAY_SETTINGS).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) })
+            "wallpaper" -> startActivity(Intent(Intent.ACTION_SET_WALLPAPER).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) })
+            else -> startActivity(Intent(Settings.ACTION_SETTINGS).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) })
         }
     }
 }

@@ -40,6 +40,7 @@ export function ContextRingDesignerModal({
   const [showJsonModal, setShowJsonModal] = useState<boolean>(false);
   const [jsonText, setJsonText] = useState<string>('');
   const [jsonMode, setJsonMode] = useState<'export' | 'import'>('export');
+  const [jsonError, setJsonError] = useState<string | null>(null);
 
   const activeRing = rings.find((r) => r.id === selectedRingId) || rings[0];
 
@@ -554,13 +555,24 @@ export function ContextRingDesignerModal({
             </h4>
             <textarea
               value={jsonText}
-              onChange={(e) => setJsonText(e.target.value)}
+              onChange={(e) => {
+                setJsonText(e.target.value);
+                setJsonError(null);
+              }}
               rows={12}
               className="w-full bg-[#12161F] border border-neutral-700 rounded-lg p-3 text-xs font-mono text-neutral-200 focus:outline-hidden"
             />
+            {jsonError && (
+              <p className="text-xs text-rose-400 mt-2 bg-rose-500/10 border border-rose-500/20 px-3 py-2 rounded-lg">
+                {jsonError}
+              </p>
+            )}
             <div className="flex justify-end gap-2 mt-4">
               <button
-                onClick={() => setShowJsonModal(false)}
+                onClick={() => {
+                  setShowJsonModal(false);
+                  setJsonError(null);
+                }}
                 className="px-3 py-1.5 rounded border border-neutral-600 text-neutral-300 text-xs"
               >
                 Close
@@ -574,8 +586,9 @@ export function ContextRingDesignerModal({
                       if (parsed.appAssignments) setAppAssignments(parsed.appAssignments);
                       if (parsed.workspaceAssignments) setWorkspaceAssignments(parsed.workspaceAssignments);
                       setShowJsonModal(false);
+                      setJsonError(null);
                     } catch (_e) {
-                      alert('Invalid JSON format');
+                      setJsonError('Invalid JSON format. Please verify the JSON syntax and structure.');
                     }
                   }}
                   className="px-3 py-1.5 rounded bg-[#2A9D8F] text-white text-xs font-semibold"

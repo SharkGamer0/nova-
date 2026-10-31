@@ -19,6 +19,9 @@ export const AppActionModal: React.FC<AppActionModalProps> = ({
   onToggleHide,
   onUninstall
 }) => {
+  const [showInfo, setShowInfo] = React.useState(false);
+  const [showUninstallConfirm, setShowUninstallConfirm] = React.useState(false);
+
   const isLight = settings.theme === 'warm-light';
   const textColor = isLight ? 'text-[#242725]' : 'text-[#F1F3F4]';
   const modalBg = isLight
@@ -53,54 +56,87 @@ export const AppActionModal: React.FC<AppActionModalProps> = ({
           </div>
         </div>
 
-        {/* Actions List */}
-        <div className="py-2 space-y-1">
-          <button
-            onClick={() => {
-              onToggleFavorite(app.id);
-              onClose();
-            }}
-            className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-black/5 dark:hover:bg-white/5 transition text-left text-xs font-medium"
-          >
-            <Pin size={16} className={app.isFavorite ? 'text-amber-500 fill-amber-500' : 'opacity-60'} />
-            <span>{app.isFavorite ? 'Unpin from Favorites' : 'Pin to Smart Favorites'}</span>
-          </button>
-
-          <button
-            onClick={() => {
-              onToggleHide(app.id);
-              onClose();
-            }}
-            className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-black/5 dark:hover:bg-white/5 transition text-left text-xs font-medium"
-          >
-            <EyeOff size={16} className="opacity-60" />
-            <span>{app.isHidden ? 'Unhide App' : 'Hide from App Drawer'}</span>
-          </button>
-
-          <button
-            onClick={() => {
-              alert(`Package: ${app.packageName}\nCategory: ${app.category}\nLaunches: ${app.launchCount}`);
-              onClose();
-            }}
-            className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-black/5 dark:hover:bg-white/5 transition text-left text-xs font-medium"
-          >
-            <Smartphone size={16} className="opacity-60" />
-            <span>App Information</span>
-          </button>
-
-          <button
-            onClick={() => {
-              if (confirm(`Uninstall ${app.name}?`)) {
-                onUninstall(app.id);
+        {showInfo ? (
+          <div className="py-3 space-y-2 text-xs">
+            <div className="bg-black/5 dark:bg-white/5 p-3 rounded-xl space-y-1.5 font-mono text-[11px]">
+              <div><span className="opacity-50">Package:</span> {app.packageName}</div>
+              <div><span className="opacity-50">Category:</span> {app.category}</div>
+              <div><span className="opacity-50">Launches:</span> {app.launchCount}</div>
+              {app.lastUsedTime && (
+                <div><span className="opacity-50">Last Used:</span> {new Date(app.lastUsedTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+              )}
+            </div>
+            <button
+              onClick={() => setShowInfo(false)}
+              className="w-full py-2 rounded-xl bg-black/10 dark:bg-white/10 hover:bg-black/15 dark:hover:bg-white/15 font-medium transition text-xs"
+            >
+              Back
+            </button>
+          </div>
+        ) : showUninstallConfirm ? (
+          <div className="py-3 space-y-3 text-xs text-center">
+            <p className="font-medium text-rose-400">Uninstall {app.name}?</p>
+            <p className="opacity-60 text-[11px]">This will remove the package shortcut and stored cache.</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowUninstallConfirm(false)}
+                className="flex-1 py-2 rounded-xl bg-black/10 dark:bg-white/10 font-medium transition text-xs"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  onUninstall(app.id);
+                  onClose();
+                }}
+                className="flex-1 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-medium transition text-xs"
+              >
+                Confirm Uninstall
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* Actions List */
+          <div className="py-2 space-y-1">
+            <button
+              onClick={() => {
+                onToggleFavorite(app.id);
                 onClose();
-              }
-            }}
-            className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-rose-500/10 text-rose-500 transition text-left text-xs font-medium"
-          >
-            <Trash2 size={16} />
-            <span>Uninstall</span>
-          </button>
-        </div>
+              }}
+              className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-black/5 dark:hover:bg-white/5 transition text-left text-xs font-medium"
+            >
+              <Pin size={16} className={app.isFavorite ? 'text-amber-500 fill-amber-500' : 'opacity-60'} />
+              <span>{app.isFavorite ? 'Unpin from Favorites' : 'Pin to Smart Favorites'}</span>
+            </button>
+
+            <button
+              onClick={() => {
+                onToggleHide(app.id);
+                onClose();
+              }}
+              className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-black/5 dark:hover:bg-white/5 transition text-left text-xs font-medium"
+            >
+              <EyeOff size={16} className="opacity-60" />
+              <span>{app.isHidden ? 'Unhide App' : 'Hide from App Drawer'}</span>
+            </button>
+
+            <button
+              onClick={() => setShowInfo(true)}
+              className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-black/5 dark:hover:bg-white/5 transition text-left text-xs font-medium"
+            >
+              <Smartphone size={16} className="opacity-60" />
+              <span>App Information</span>
+            </button>
+
+            <button
+              onClick={() => setShowUninstallConfirm(true)}
+              className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-rose-500/10 text-rose-500 transition text-left text-xs font-medium"
+            >
+              <Trash2 size={16} />
+              <span>Uninstall</span>
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

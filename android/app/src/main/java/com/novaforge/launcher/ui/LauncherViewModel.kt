@@ -518,6 +518,14 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch { preferences.persistWidgets(updated) }
     }
 
+    // User Toast / Feedback Messages
+    private val _userMessage = MutableStateFlow<String?>(null)
+    val userMessage: StateFlow<String?> = _userMessage.asStateFlow()
+
+    fun clearUserMessage() {
+        _userMessage.value = null
+    }
+
     // Animated Icon Engine Actions
     fun openAnimatedIconLibrary() {
         _currentScreen.value = 7
@@ -525,7 +533,12 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
 
     fun importAnimation(uri: android.net.Uri, name: String? = null) {
         viewModelScope.launch {
-            animationRepository.importAnimationFromUri(uri, name)
+            val res = animationRepository.importAnimationFromUri(uri, name)
+            if (res.isSuccess) {
+                _userMessage.value = "Imported animation: ${res.getOrNull()?.name}"
+            } else {
+                _userMessage.value = "Import failed: ${res.exceptionOrNull()?.message ?: "Unsupported file"}"
+            }
         }
     }
 

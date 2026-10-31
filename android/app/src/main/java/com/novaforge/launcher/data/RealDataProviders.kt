@@ -174,74 +174,107 @@ class CalendarRepository(private val context: Context) {
 class ScreenTimeRepository(private val context: Context) {
 
     fun hasUsagePermission(): Boolean {
-        val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as android.app.AppOpsManager
-        val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            appOps.unsafeCheckOpNoThrow(
-                android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
-                android.os.Process.myUid(),
-                context.packageName
-            )
-        } else {
-            @Suppress("DEPRECATION")
-            appOps.checkOpNoThrow(
-                android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
-                android.os.Process.myUid(),
-                context.packageName
-            )
+        return try {
+            val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as android.app.AppOpsManager
+            val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                appOps.unsafeCheckOpNoThrow(
+                    android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
+                    android.os.Process.myUid(),
+                    context.packageName
+                )
+            } else {
+                @Suppress("DEPRECATION")
+                appOps.checkOpNoThrow(
+                    android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
+                    android.os.Process.myUid(),
+                    context.packageName
+                )
+            }
+            mode == android.app.AppOpsManager.MODE_ALLOWED
+        } catch (_: Exception) {
+            false
         }
-        return mode == android.app.AppOpsManager.MODE_ALLOWED
     }
 
     fun getUsagePermissionIntent(): Intent {
         return Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
-            data = Uri.fromParts("package", context.packageName, null)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
         }
     }
 
     fun getDailyUsageStats(): ScreenTimeSummary {
         val hasPerm = hasUsagePermission()
         if (!hasPerm) {
-            // Return demo data with isDemoData = true
             return ScreenTimeSummary(
-                totalTimeFormatted = "4h 32m",
-                totalTimeMinutes = 272,
-                topAppUsage = listOf("YouTube" to "1h 12m", "Chrome" to "52m", "WhatsApp" to "28m"),
+                totalTimeFormatted = "Usage Access Required",
+                totalTimeMinutes = 0L,
+                topAppUsage = emptyList(),
                 hasPermission = false,
-                isDemoData = true
+                isDemoData = false
             )
         }
 
         val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager
-            ?: return ScreenTimeSummary(hasPermission = false, isDemoData = true)
+            ?: return ScreenTimeSummary(
+                totalTimeFormatted = "Service Unavailable",
+                totalTimeMinutes = 0L,
+                topAppUsage = emptyList(),
+                hasPermission = true,
+                isDemoData = false
+            )
 
         val cal = Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, 0)
             set(Calendar.MINUTE, 0)
             set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
         }
         val startTime = cal.timeInMillis
         val endTime = System.currentTimeMillis()
 
-        val stats = usageStatsManager.queryUsageStats(
-            UsageStatsManager.INTERVAL_DAILY,
-            startTime,
-            endTime
-        )
+        val stats = try {
+            usageStatsManager.queryUsageStats(
+                UsageStatsManager.INTERVAL_DAILY,
+                startTime,
+                endTime
+            )
+        } catch (_: Exception) {
+            null
+        }
 
         if (stats.isNullOrEmpty()) {
-            return ScreenTimeSummary(hasPermission = true, isDemoData = false)
+            return ScreenTimeSummary(
+                totalTimeFormatted = "0m",
+                totalTimeMinutes = 0L,
+                topAppUsage = emptyList(),
+                hasPermission = true,
+                isDemoData = false
+            )
         }
 
         var totalMillis = 0L
         val appUsageList = mutableListOf<Pair<String, Long>>()
+        val pm = context.packageManager
 
+        // Aggregate by package to prevent duplicate daily buckets
+        val packageTotals = mutableMapOf<String, Long>()
         for (usage in stats) {
-            if (usage.totalTimeInForeground > 0) {
-                totalMillis += usage.totalTimeInForeground
-                val pkgName = usage.packageName
-                val cleanName = pkgName.substringAfterLast('.').replaceFirstChar { it.uppercase() }
-                appUsageList.add(cleanName to usage.totalTimeInForeground)
+            val fg = usage.totalTimeInForeground
+            if (fg > 0 && usage.packageName != context.packageName) {
+                val current = packageTotals[usage.packageName] ?: 0L
+                packageTotals[usage.packageName] = maxOf(current, fg)
             }
+        }
+
+        for ((pkgName, fg) in packageTotals) {
+            totalMillis += fg
+            val appLabel = try {
+                val appInfo = pm.getApplicationInfo(pkgName, 0)
+                pm.getApplicationLabel(appInfo).toString()
+            } catch (_: Exception) {
+                pkgName.substringAfterLast('.').replaceFirstChar { it.uppercase() }
+            }
+            appUsageList.add(appLabel to fg)
         }
 
         appUsageList.sortByDescending { it.second }
@@ -249,7 +282,7 @@ class ScreenTimeRepository(private val context: Context) {
         val totalMinutes = totalMillis / (1000 * 60)
         val hours = totalMinutes / 60
         val minutes = totalMinutes % 60
-        val formattedTotal = "${hours}h ${minutes}m"
+        val formattedTotal = if (hours > 0) "${hours}h ${minutes}m" else "${minutes}m"
 
         val topApps = appUsageList.take(3).map { (name, millis) ->
             val m = millis / (1000 * 60)

@@ -7,7 +7,6 @@ import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProviderInfo
 import android.content.Context
 import android.content.Intent
-import android.os.Bundle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -54,18 +53,19 @@ class WidgetBindingManager(
         onWidgetReady: (LauncherWidget) -> Unit,
         onConfigureRequired: (Intent, Int) -> Unit
     ) {
-        val widgetInfo = appWidgetManager.getAppWidgetInfo(appWidgetId) ?: return
+        val returnedId = data?.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId) ?: appWidgetId
+        val widgetInfo = appWidgetManager.getAppWidgetInfo(returnedId) ?: return
 
         if (widgetInfo.configure != null) {
             val configIntent = Intent(AppWidgetManager.ACTION_APPWIDGET_CONFIGURE).apply {
                 component = widgetInfo.configure
-                putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
+                putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, returnedId)
             }
-            onConfigureRequired(configIntent, appWidgetId)
+            onConfigureRequired(configIntent, returnedId)
         } else {
             onWidgetReady(
                 LauncherWidget(
-                    appWidgetId = appWidgetId,
+                    appWidgetId = returnedId,
                     providerPackage = widgetInfo.provider.packageName,
                     providerClass = widgetInfo.provider.className,
                     cellWidth = 2,
@@ -125,15 +125,6 @@ fun ResizableWidgetContainer(
                     appWidgetHost.createView(context, widget.appWidgetId, widgetInfo).apply {
                         setAppWidget(widget.appWidgetId, widgetInfo)
                     }
-                },
-                update = { view ->
-                    val options = Bundle().apply {
-                        putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, view.width)
-                        putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, view.height)
-                        putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, view.width)
-                        putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, view.height)
-                    }
-                    appWidgetManager.updateAppWidgetOptions(widget.appWidgetId, options)
                 }
             )
         } else {
@@ -143,11 +134,17 @@ fun ResizableWidgetContainer(
                     .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "Widget Unavailable",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "Widget Unavailable",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    TextButton(onClick = onRemoveWidget) {
+                        Text("Remove", style = MaterialTheme.typography.labelSmall)
+                    }
+                }
             }
         }
 
@@ -163,38 +160,72 @@ fun ResizableWidgetContainer(
                 // Width resize toggle (Half vs Full)
                 IconButton(
                     onClick = {
-                        val nextW = if (widget.cellWidth == 1) 2 else 1
-                        onResizeWidth(nextW)
+                        val nextWidth = if (widget.cellWidth == 1) 2 else 1
+                        onResizeWidth(nextWidth)
                     },
                     modifier = Modifier.size(28.dp)
                 ) {
-                    Icon(Icons.Default.WidthFull, contentDescription = "Toggle Width", modifier = Modifier.size(15.dp))
+                    Icon(
+                        Icons.Default.WidthFull,
+                        contentDescription = "Toggle Width",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(16.dp)
+                    )
                 }
 
-                // Height resize toggle
+                // Height cycle (1 -> 2 -> 3 -> 4 -> 1)
                 IconButton(
                     onClick = {
-                        val nextH = if (widget.cellHeight >= 4) 1 else widget.cellHeight + 1
-                        onResizeHeight(nextH)
+                        val nextHeight = if (widget.cellHeight >= 4) 1 else widget.cellHeight + 1
+                        onResizeHeight(nextHeight)
                     },
                     modifier = Modifier.size(28.dp)
                 ) {
-                    Icon(Icons.Default.Height, contentDescription = "Resize Height", modifier = Modifier.size(15.dp))
+                    Icon(
+                        Icons.Default.Height,
+                        contentDescription = "Cycle Height",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(16.dp)
+                    )
                 }
 
-                // Move Up
-                IconButton(onClick = onMoveUp, modifier = Modifier.size(28.dp)) {
-                    Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Move Up", modifier = Modifier.size(16.dp))
+                // Move up in stack
+                IconButton(
+                    onClick = onMoveUp,
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(
+                        Icons.Default.KeyboardArrowUp,
+                        contentDescription = "Move Up",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(16.dp)
+                    )
                 }
 
-                // Move Down
-                IconButton(onClick = onMoveDown, modifier = Modifier.size(28.dp)) {
-                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Move Down", modifier = Modifier.size(16.dp))
+                // Move down in stack
+                IconButton(
+                    onClick = onMoveDown,
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(
+                        Icons.Default.KeyboardArrowDown,
+                        contentDescription = "Move Down",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(16.dp)
+                    )
                 }
 
-                // Remove Widget
-                IconButton(onClick = onRemoveWidget, modifier = Modifier.size(28.dp)) {
-                    Icon(Icons.Default.Close, contentDescription = "Remove Widget", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
+                // Delete widget
+                IconButton(
+                    onClick = onRemoveWidget,
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = "Remove Widget",
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(16.dp)
+                    )
                 }
             }
         }

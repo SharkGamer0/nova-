@@ -2,6 +2,7 @@ package com.novaforge.launcher.ui.widgets
 
 import android.appwidget.AppWidgetHost
 import android.appwidget.AppWidgetManager
+import android.appwidget.AppWidgetProviderInfo
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -16,15 +17,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.novaforge.launcher.data.AppIconManager
 import com.novaforge.launcher.data.RealWeatherInfo
 import com.novaforge.launcher.data.ScreenTimeSummary
 import com.novaforge.launcher.data.model.BatteryInfo
 import com.novaforge.launcher.data.model.LauncherWidget
 import com.novaforge.launcher.widget.ResizableWidgetContainer
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WidgetsScreen(
     weather: RealWeatherInfo,
@@ -42,6 +46,18 @@ fun WidgetsScreen(
     onOpenSettings: () -> Unit = {}
 ) {
     var isEditMode by remember { mutableStateOf(false) }
+    var showProviderPickerSheet by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+
+    val installedProviders = remember {
+        try {
+            appWidgetManager.installedProviders.sortedBy {
+                it.loadLabel(context.packageManager).lowercase()
+            }
+        } catch (_: Exception) {
+            emptyList<AppWidgetProviderInfo>()
+        }
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -49,7 +65,7 @@ fun WidgetsScreen(
             .statusBarsPadding()
             .padding(16.dp)
     ) {
-        item {
+        item(key = "header") {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -77,7 +93,13 @@ fun WidgetsScreen(
                     }
 
                     IconButton(
-                        onClick = onRequestAddWidget,
+                        onClick = {
+                            if (installedProviders.isNotEmpty()) {
+                                showProviderPickerSheet = true
+                            } else {
+                                onRequestAddWidget()
+                            }
+                        },
                         modifier = Modifier
                             .size(32.dp)
                             .clip(RoundedCornerShape(8.dp))
@@ -90,7 +112,7 @@ fun WidgetsScreen(
         }
 
         // Real Weather Card (Open-Meteo)
-        item {
+        item(key = "weather_card") {
             Card(
                 shape = RoundedCornerShape(24.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
@@ -106,7 +128,7 @@ fun WidgetsScreen(
                     ) {
                         Text(weather.city, color = Color.White.copy(alpha = 0.85f), fontSize = 13.sp)
                         if (weather.isDemoData) {
-                            Text("DEMO", color = Color.White.copy(alpha = 0.6f), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            Text("OFFLINE DEMO", color = Color.White.copy(alpha = 0.6f), fontSize = 9.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                     Text(weather.temperature, color = Color.White, fontSize = 38.sp, fontWeight = FontWeight.Light)
@@ -116,7 +138,7 @@ fun WidgetsScreen(
         }
 
         // Real Screen Time & Real Battery Gauge Row
-        item {
+        item(key = "metrics_row") {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -146,7 +168,7 @@ fun WidgetsScreen(
                 Card(
                     shape = RoundedCornerShape(24.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1.2f)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(
@@ -154,25 +176,31 @@ fun WidgetsScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(screenTime.totalTimeFormatted, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                            if (screenTime.isDemoData) {
-                                Text(
-                                    "DEMO",
-                                    fontSize = 9.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
+                            Text(
+                                text = if (screenTime.hasPermission) screenTime.totalTimeFormatted else "Access Needed",
+                                fontSize = if (screenTime.hasPermission) 20.sp else 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (screenTime.hasPermission) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.primary
+                            )
                         }
                         Text("Screen Time Today", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         if (!screenTime.hasPermission) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            FilledTonalButton(
+                                onClick = onRequestUsagePermission,
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier.height(28.dp)
+                            ) {
+                                Text("Grant Permission", fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                        } else if (screenTime.topAppUsage.isNotEmpty()) {
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                "Grant Access",
+                                text = screenTime.topAppUsage.take(2).joinToString(" • ") { "${it.first} (${it.second})" },
                                 fontSize = 10.sp,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.SemiBold,
-                                modifier = Modifier.clickable { onRequestUsagePermission() }
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                                maxLines = 1
                             )
                         }
                     }
@@ -182,7 +210,7 @@ fun WidgetsScreen(
 
         // Edit Mode Explanation Banner
         if (isEditMode) {
-            item {
+            item(key = "edit_banner") {
                 Surface(
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
                     shape = RoundedCornerShape(14.dp),
@@ -213,7 +241,7 @@ fun WidgetsScreen(
 
         // Native Hosted Widgets
         if (widgets.isEmpty()) {
-            item {
+            item(key = "empty_widgets") {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -229,7 +257,7 @@ fun WidgetsScreen(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Tap the + button above to pick Android app widgets",
+                            text = "Tap + to add Android AppWidgets",
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -249,6 +277,83 @@ fun WidgetsScreen(
                     onMoveDown = { onMoveWidget(widget.appWidgetId, 1) },
                     onRemoveWidget = { onRemoveWidget(widget.appWidgetId) }
                 )
+            }
+        }
+    }
+
+    // Modal Sheet for choosing from Installed Widget Providers or System Picker
+    if (showProviderPickerSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showProviderPickerSheet = false },
+            sheetState = rememberModalBottomSheetState()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Add Android Widget",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    TextButton(onClick = {
+                        showProviderPickerSheet = false
+                        onRequestAddWidget()
+                    }) {
+                        Text("System Picker", fontSize = 12.sp)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 380.dp)
+                ) {
+                    items(installedProviders) { provider ->
+                        val label = provider.loadLabel(context.packageManager)
+                        val pkgName = provider.provider.packageName
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    showProviderPickerSheet = false
+                                    onRequestAddWidget()
+                                }
+                                .padding(vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.Widgets,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = label,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    text = pkgName,
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
     }
