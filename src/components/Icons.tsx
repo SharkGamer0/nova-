@@ -261,5 +261,6 @@ export {
   Copy,
   RotateCcw,
   Share2,
+  Sparkles,
   X
 };

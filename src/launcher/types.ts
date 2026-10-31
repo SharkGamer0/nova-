@@ -60,6 +60,18 @@ export interface LauncherSettings {
   focusSchedule: string;
   hiddenAppsPin: string;
   wallpaperIndex: number;
+  clockStyle?: 'digital' | 'minimal' | 'bold' | 'serif' | 'monospace' | 'cosmic';
+  clockSize?: 'compact' | 'standard' | 'large';
+  showBattery?: boolean;
+  showWeather?: boolean;
+  showCalendarEvent?: boolean;
+  showMusicHome?: boolean;
+  showMusicDrawer?: boolean;
+  musicExpanded?: boolean;
+  showAlphabetRail?: boolean;
+  wallpaperDimOverlay?: number;
+  homePageCount?: number;
+  hapticsEnabled?: boolean;
 }
 
 export type RingActionType =

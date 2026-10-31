@@ -80,6 +80,99 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         initialValue = emptySet()
     )
 
+    // Redesign & Experience Customization StateFlows
+    val clockStyle: StateFlow<String> = preferences.clockStyle.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = "digital"
+    )
+
+    val clockSize: StateFlow<String> = preferences.clockSize.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = "large"
+    )
+
+    val showBattery: StateFlow<Boolean> = preferences.showBattery.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = true
+    )
+
+    val showWeather: StateFlow<Boolean> = preferences.showWeather.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = true
+    )
+
+    val showCalendarEvent: StateFlow<Boolean> = preferences.showCalendarEvent.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = true
+    )
+
+    val showMusicHome: StateFlow<Boolean> = preferences.showMusicHome.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = true
+    )
+
+    val showMusicDrawer: StateFlow<Boolean> = preferences.showMusicDrawer.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = false
+    )
+
+    val musicExpanded: StateFlow<Boolean> = preferences.musicExpanded.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = false
+    )
+
+    val showAlphabetIndex: StateFlow<Boolean> = preferences.showAlphabetIndex.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = true
+    )
+
+    val wallpaperDimOverlay: StateFlow<Float> = preferences.wallpaperDimOverlay.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = 0.20f
+    )
+
+    val hapticsEnabled: StateFlow<Boolean> = preferences.hapticsEnabled.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = true
+    )
+
+    val homePageCount: StateFlow<Int> = preferences.homePageCount.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = 2
+    )
+
+    val mediaControlHelper = com.novaforge.launcher.service.MediaControlHelper(application)
+    val mediaPlaybackInfo: StateFlow<com.novaforge.launcher.service.MediaPlaybackInfo> = mediaControlHelper.playbackInfo
+
+    fun playPauseMedia() = mediaControlHelper.playPause()
+    fun skipNextMedia() = mediaControlHelper.skipNext()
+    fun skipPreviousMedia() = mediaControlHelper.skipPrevious()
+
+    fun setClockStyle(style: String) = viewModelScope.launch { preferences.setClockStyle(style) }
+    fun setClockSize(size: String) = viewModelScope.launch { preferences.setClockSize(size) }
+    fun setShowBattery(show: Boolean) = viewModelScope.launch { preferences.setShowBattery(show) }
+    fun setShowWeather(show: Boolean) = viewModelScope.launch { preferences.setShowWeather(show) }
+    fun setShowCalendarEvent(show: Boolean) = viewModelScope.launch { preferences.setShowCalendarEvent(show) }
+    fun setShowMusicHome(show: Boolean) = viewModelScope.launch { preferences.setShowMusicHome(show) }
+    fun setShowMusicDrawer(show: Boolean) = viewModelScope.launch { preferences.setShowMusicDrawer(show) }
+    fun setMusicExpanded(expanded: Boolean) = viewModelScope.launch { preferences.setMusicExpanded(expanded) }
+    fun setShowAlphabetIndex(show: Boolean) = viewModelScope.launch { preferences.setShowAlphabetIndex(show) }
+    fun setWallpaperDimOverlay(dim: Float) = viewModelScope.launch { preferences.setWallpaperDimOverlay(dim) }
+    fun setHapticsEnabled(enabled: Boolean) = viewModelScope.launch { preferences.setHapticsEnabled(enabled) }
+    fun setHomePageCount(count: Int) = viewModelScope.launch { preferences.setHomePageCount(count) }
+
     // Navigation Screens:
     // 0: AppDrawer, 1: HOME, 2: COMMAND, 3: SPACES, 4: WIDGETS, 5: SETTINGS, 6: AUTOMATIONS, 7: ANIMATED_ICONS, 8: CONTEXT_RING_DESIGNER
     private val _currentScreen = MutableStateFlow(1)
@@ -207,6 +300,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         loadRealData()
         updateBatteryState()
         evaluateAdaptiveSuggestions()
+        mediaControlHelper.registerNotificationListener()
     }
 
     private fun observePersistedWidgets() {

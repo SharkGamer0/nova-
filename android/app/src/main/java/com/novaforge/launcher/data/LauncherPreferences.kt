@@ -44,6 +44,116 @@ class LauncherPreferences(private val context: Context) {
         val RECENT_COMMANDS = stringPreferencesKey("recent_commands_json")
         val FAVORITE_COMMANDS = stringSetPreferencesKey("favorite_commands")
         val CONTEXT_RINGS = stringPreferencesKey("context_rings_json")
+
+        // Minimalist Redesign & Customization Keys
+        val CLOCK_STYLE = stringPreferencesKey("clock_style")
+        val CLOCK_SIZE = stringPreferencesKey("clock_size")
+        val SHOW_BATTERY = booleanPreferencesKey("show_battery")
+        val SHOW_WEATHER = booleanPreferencesKey("show_weather")
+        val SHOW_CALENDAR_EVENT = booleanPreferencesKey("show_calendar_event")
+        val SHOW_MUSIC_HOME = booleanPreferencesKey("show_music_home")
+        val SHOW_MUSIC_DRAWER = booleanPreferencesKey("show_music_drawer")
+        val MUSIC_EXPANDED = booleanPreferencesKey("music_expanded")
+        val SHOW_ALPHABET_INDEX = booleanPreferencesKey("show_alphabet_index")
+        val WALLPAPER_DIM_OVERLAY = floatPreferencesKey("wallpaper_dim_overlay")
+        val HAPTICS_ENABLED = booleanPreferencesKey("haptics_enabled")
+        val HOME_PAGE_COUNT = intPreferencesKey("home_page_count")
+    }
+
+    val clockStyle: Flow<String> = context.dataStore.data.map { prefs ->
+        prefs[CLOCK_STYLE] ?: "digital"
+    }
+
+    val clockSize: Flow<String> = context.dataStore.data.map { prefs ->
+        prefs[CLOCK_SIZE] ?: "large"
+    }
+
+    val showBattery: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[SHOW_BATTERY] ?: true
+    }
+
+    val showWeather: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[SHOW_WEATHER] ?: true
+    }
+
+    val showCalendarEvent: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[SHOW_CALENDAR_EVENT] ?: true
+    }
+
+    val showMusicHome: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[SHOW_MUSIC_HOME] ?: true
+    }
+
+    val showMusicDrawer: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[SHOW_MUSIC_DRAWER] ?: false
+    }
+
+    val musicExpanded: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[MUSIC_EXPANDED] ?: false
+    }
+
+    val showAlphabetIndex: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[SHOW_ALPHABET_INDEX] ?: true
+    }
+
+    val wallpaperDimOverlay: Flow<Float> = context.dataStore.data.map { prefs ->
+        prefs[WALLPAPER_DIM_OVERLAY] ?: 0.20f
+    }
+
+    val hapticsEnabled: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[HAPTICS_ENABLED] ?: true
+    }
+
+    val homePageCount: Flow<Int> = context.dataStore.data.map { prefs ->
+        prefs[HOME_PAGE_COUNT] ?: 2
+    }
+
+    suspend fun setClockStyle(style: String) {
+        context.dataStore.edit { it[CLOCK_STYLE] = style }
+    }
+
+    suspend fun setClockSize(size: String) {
+        context.dataStore.edit { it[CLOCK_SIZE] = size }
+    }
+
+    suspend fun setShowBattery(show: Boolean) {
+        context.dataStore.edit { it[SHOW_BATTERY] = show }
+    }
+
+    suspend fun setShowWeather(show: Boolean) {
+        context.dataStore.edit { it[SHOW_WEATHER] = show }
+    }
+
+    suspend fun setShowCalendarEvent(show: Boolean) {
+        context.dataStore.edit { it[SHOW_CALENDAR_EVENT] = show }
+    }
+
+    suspend fun setShowMusicHome(show: Boolean) {
+        context.dataStore.edit { it[SHOW_MUSIC_HOME] = show }
+    }
+
+    suspend fun setShowMusicDrawer(show: Boolean) {
+        context.dataStore.edit { it[SHOW_MUSIC_DRAWER] = show }
+    }
+
+    suspend fun setMusicExpanded(expanded: Boolean) {
+        context.dataStore.edit { it[MUSIC_EXPANDED] = expanded }
+    }
+
+    suspend fun setShowAlphabetIndex(show: Boolean) {
+        context.dataStore.edit { it[SHOW_ALPHABET_INDEX] = show }
+    }
+
+    suspend fun setWallpaperDimOverlay(dim: Float) {
+        context.dataStore.edit { it[WALLPAPER_DIM_OVERLAY] = dim }
+    }
+
+    suspend fun setHapticsEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[HAPTICS_ENABLED] = enabled }
+    }
+
+    suspend fun setHomePageCount(count: Int) {
+        context.dataStore.edit { it[HOME_PAGE_COUNT] = count }
     }
 
     val contextRingsRawJson: Flow<String?> = context.dataStore.data.map { prefs ->

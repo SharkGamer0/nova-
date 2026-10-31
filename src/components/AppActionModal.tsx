@@ -66,6 +66,10 @@ export const AppActionModal: React.FC<AppActionModalProps> = ({
                 <div><span className="opacity-50">Last Used:</span> {new Date(app.lastUsedTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
               )}
             </div>
+            <div className="flex items-center justify-center gap-1.5 pt-1 text-[10px] opacity-40 font-mono">
+              <img src="/novaforge_logo.png" alt="" className="w-3.5 h-3.5 rounded-sm" />
+              <span>NovaForge Application Inspector</span>
+            </div>
             <button
               onClick={() => setShowInfo(false)}
               className="w-full py-2 rounded-xl bg-black/10 dark:bg-white/10 hover:bg-black/15 dark:hover:bg-white/15 font-medium transition text-xs"

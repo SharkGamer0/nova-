@@ -3,10 +3,13 @@ package com.novaforge.launcher.ui.settings
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.ui.res.painterResource
+import com.novaforge.launcher.R
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,6 +32,7 @@ import com.novaforge.launcher.data.model.AppItem
 
 enum class SettingsSubscreen {
     MAIN,
+    HOME_CUSTOMIZATION,
     APPEARANCE,
     ICON_DESIGNER,
     GESTURES,
@@ -50,6 +54,17 @@ fun SettingsScreen(
     focusWhitelist: Set<String>,
     allApps: List<AppItem>,
     screenTime: ScreenTimeSummary,
+    clockStyle: String = "digital",
+    clockSize: String = "large",
+    showBattery: Boolean = true,
+    showWeather: Boolean = true,
+    showCalendarEvent: Boolean = true,
+    showMusicHome: Boolean = true,
+    showMusicDrawer: Boolean = false,
+    showAlphabetIndex: Boolean = true,
+    wallpaperDimOverlay: Float = 0.20f,
+    hapticsEnabled: Boolean = true,
+    homePageCount: Int = 2,
     onSaveLocation: (Double, Double, String) -> Unit,
     onSetTheme: (String) -> Unit,
     onSetAccent: (String) -> Unit,
@@ -61,6 +76,17 @@ fun SettingsScreen(
     onRequestUsagePermission: () -> Unit,
     onExportBackup: () -> String,
     onRestoreBackup: (String) -> Boolean,
+    onSetClockStyle: (String) -> Unit = {},
+    onSetClockSize: (String) -> Unit = {},
+    onSetShowBattery: (Boolean) -> Unit = {},
+    onSetShowWeather: (Boolean) -> Unit = {},
+    onSetShowCalendarEvent: (Boolean) -> Unit = {},
+    onSetShowMusicHome: (Boolean) -> Unit = {},
+    onSetShowMusicDrawer: (Boolean) -> Unit = {},
+    onSetShowAlphabetIndex: (Boolean) -> Unit = {},
+    onSetWallpaperDimOverlay: (Float) -> Unit = {},
+    onSetHapticsEnabled: (Boolean) -> Unit = {},
+    onSetHomePageCount: (Int) -> Unit = {},
     onOpenAutomations: () -> Unit = {},
     onOpenAnimatedIcons: () -> Unit = {},
     onOpenContextRings: () -> Unit = {},
@@ -77,6 +103,7 @@ fun SettingsScreen(
                     Text(
                         when (currentSubscreen) {
                             SettingsSubscreen.MAIN -> "Launcher Settings"
+                            SettingsSubscreen.HOME_CUSTOMIZATION -> "Home Screen & Glance"
                             SettingsSubscreen.APPEARANCE -> "Appearance & Theme"
                             SettingsSubscreen.ICON_DESIGNER -> "Icon Designer"
                             SettingsSubscreen.GESTURES -> "Gesture Navigation"
@@ -124,6 +151,32 @@ fun SettingsScreen(
                         },
                         onOpenAutomations = onOpenAutomations,
                         onOpenAnimatedIcons = onOpenAnimatedIcons
+                    )
+                }
+                SettingsSubscreen.HOME_CUSTOMIZATION -> {
+                    HomeCustomizationSubscreen(
+                        clockStyle = clockStyle,
+                        clockSize = clockSize,
+                        showBattery = showBattery,
+                        showWeather = showWeather,
+                        showCalendarEvent = showCalendarEvent,
+                        showMusicHome = showMusicHome,
+                        showMusicDrawer = showMusicDrawer,
+                        showAlphabetIndex = showAlphabetIndex,
+                        wallpaperDimOverlay = wallpaperDimOverlay,
+                        hapticsEnabled = hapticsEnabled,
+                        homePageCount = homePageCount,
+                        onSetClockStyle = onSetClockStyle,
+                        onSetClockSize = onSetClockSize,
+                        onSetShowBattery = onSetShowBattery,
+                        onSetShowWeather = onSetShowWeather,
+                        onSetShowCalendarEvent = onSetShowCalendarEvent,
+                        onSetShowMusicHome = onSetShowMusicHome,
+                        onSetShowMusicDrawer = onSetShowMusicDrawer,
+                        onSetShowAlphabetIndex = onSetShowAlphabetIndex,
+                        onSetWallpaperDimOverlay = onSetWallpaperDimOverlay,
+                        onSetHapticsEnabled = onSetHapticsEnabled,
+                        onSetHomePageCount = onSetHomePageCount
                     )
                 }
                 SettingsSubscreen.APPEARANCE -> {
@@ -203,13 +256,59 @@ private fun MainSettingsList(
             .padding(horizontal = 20.dp)
     ) {
         item {
+            // Official NovaForge Cosmic Brand Card
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)),
+                shape = RoundedCornerShape(20.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 10.dp, bottom = 4.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.novaforge_logo),
+                        contentDescription = "NovaForge Launcher Logo",
+                        modifier = Modifier
+                            .size(52.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                    )
+                    Spacer(modifier = Modifier.width(14.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "NovaForge Launcher",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "v1.2.0 Cosmic Orbit Edition",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = "Minimalist Space • Local-First • 100% Free",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+
+        item {
             // Weather Location Card
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
                 shape = RoundedCornerShape(18.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 10.dp)
+                    .padding(vertical = 8.dp)
                     .clickable { onOpenLocation() }
             ) {
                 Row(
@@ -233,6 +332,7 @@ private fun MainSettingsList(
         }
 
         val menuItems = listOf(
+            Triple("Home Screen & Glance", "Clock style, media player, wallpaper dimming & info toggles", SettingsSubscreen.HOME_CUSTOMIZATION),
             Triple("Appearance & Theme", "Off-white, charcoal dark, monochrome & accents", SettingsSubscreen.APPEARANCE),
             Triple("Context Rings", "Radial command menu, custom actions & gesture bindings", null),
             Triple("Animated Icon Engine", "Custom GIF, WebP & Lottie animations with battery saver", null),
@@ -275,6 +375,28 @@ private fun MainSettingsList(
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
         }
+
+        item {
+            Spacer(modifier = Modifier.height(20.dp))
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 28.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "NovaForge Launcher Native",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = "Clean Minimalist Cosmic Architecture • 100% Free",
+                    fontSize = 10.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                )
+            }
+        }
     }
 }
 
@@ -286,16 +408,18 @@ private fun AppearanceSettingsSubscreen(
     onSetAccent: (String) -> Unit
 ) {
     val themes = listOf(
-        "warm-light" to "Warm Light (Default Grace aesthetic)",
+        "cosmic-dark" to "Cosmic Dark (Official near-black & midnight blue)",
         "charcoal-dark" to "Charcoal Dark (Deep matte night theme)",
-        "monochrome" to "Monochrome (High contrast minimalist)"
+        "monochrome" to "Monochrome (High contrast minimalist)",
+        "warm-light" to "Warm Light (Default Grace aesthetic)"
     )
 
     val accents = listOf(
+        "#38BDF8" to "Cosmic Cyan",
+        "#6366F1" to "Stellar Indigo",
         "#2A9D8F" to "Muted Teal",
         "#E76F51" to "Burnt Amber",
-        "#4A5568" to "Slate Grey",
-        "#52796F" to "Sage Green"
+        "#4A5568" to "Slate Grey"
     )
 
     Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
@@ -722,3 +846,210 @@ private fun LocationCoordinatesDialog(
         }
     )
 }
+
+@Composable
+private fun HomeCustomizationSubscreen(
+    clockStyle: String,
+    clockSize: String,
+    showBattery: Boolean,
+    showWeather: Boolean,
+    showCalendarEvent: Boolean,
+    showMusicHome: Boolean,
+    showMusicDrawer: Boolean,
+    showAlphabetIndex: Boolean,
+    wallpaperDimOverlay: Float,
+    hapticsEnabled: Boolean,
+    homePageCount: Int,
+    onSetClockStyle: (String) -> Unit,
+    onSetClockSize: (String) -> Unit,
+    onSetShowBattery: (Boolean) -> Unit,
+    onSetShowWeather: (Boolean) -> Unit,
+    onSetShowCalendarEvent: (Boolean) -> Unit,
+    onSetShowMusicHome: (Boolean) -> Unit,
+    onSetShowMusicDrawer: (Boolean) -> Unit,
+    onSetShowAlphabetIndex: (Boolean) -> Unit,
+    onSetWallpaperDimOverlay: (Float) -> Unit,
+    onSetHapticsEnabled: (Boolean) -> Unit,
+    onSetHomePageCount: (Int) -> Unit
+) {
+    val clockStyles = listOf(
+        "digital" to "Digital (Clean sans-serif tall digits)",
+        "minimal" to "Minimal (Thin airy display)",
+        "bold" to "Impact (Heavy display numerals)",
+        "serif" to "Editorial (Refined classic serif)",
+        "monospace" to "Monospace (Tech command terminal)",
+        "cosmic" to "Cosmic Orbit (Cyan celestial accent)"
+    )
+
+    val clockSizes = listOf("compact" to "Compact", "standard" to "Standard", "large" to "Large")
+    val pageCounts = listOf(1, 2, 3, 4)
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 20.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        item {
+            Text("Clock Typography Style", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            Spacer(modifier = Modifier.height(8.dp))
+            clockStyles.forEach { (style, label) ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onSetClockStyle(style) }
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(selected = clockStyle == style, onClick = { onSetClockStyle(style) })
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(label, fontSize = 13.sp)
+                }
+            }
+        }
+
+        item {
+            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            Spacer(modifier = Modifier.height(8.dp))
+            Text("Clock Size", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            Spacer(modifier = Modifier.height(10.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                clockSizes.forEach { (size, label) ->
+                    val isSelected = clockSize == size
+                    Button(
+                        onClick = { onSetClockSize(size) },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(label, fontSize = 12.sp, color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface)
+                    }
+                }
+            }
+        }
+
+        item {
+            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            Spacer(modifier = Modifier.height(8.dp))
+            Text("Wallpaper Readability Dimming (${(wallpaperDimOverlay * 100).toInt()}%)", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            Text(
+                "Subtle translucent darkening overlay to guarantee text legibility over any wallpaper without hiding it.",
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Slider(
+                value = wallpaperDimOverlay,
+                onValueChange = { onSetWallpaperDimOverlay(it) },
+                valueRange = 0f..0.70f,
+                steps = 14
+            )
+        }
+
+        item {
+            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            Spacer(modifier = Modifier.height(8.dp))
+            Text("Glance & Information Elements", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            Spacer(modifier = Modifier.height(8.dp))
+
+            ToggleOptionRow(
+                title = "Battery Percentage & Status",
+                subtitle = "Display live battery charge in header row",
+                checked = showBattery,
+                onCheckedChange = onSetShowBattery
+            )
+
+            ToggleOptionRow(
+                title = "Live Weather Glance",
+                subtitle = "Display temperature and conditions under clock",
+                checked = showWeather,
+                onCheckedChange = onSetShowWeather
+            )
+
+            ToggleOptionRow(
+                title = "Calendar Events & Schedule",
+                subtitle = "Show upcoming calendar events under clock",
+                checked = showCalendarEvent,
+                onCheckedChange = onSetShowCalendarEvent
+            )
+
+            ToggleOptionRow(
+                title = "Compact Music Widget on Home",
+                subtitle = "Show MediaSession music player widget on Home Screen",
+                checked = showMusicHome,
+                onCheckedChange = onSetShowMusicHome
+            )
+
+            ToggleOptionRow(
+                title = "Compact Music Widget in App Drawer",
+                subtitle = "Show MediaSession player at top of App Drawer",
+                checked = showMusicDrawer,
+                onCheckedChange = onSetShowMusicDrawer
+            )
+
+            ToggleOptionRow(
+                title = "A–Z Fast Index Rail",
+                subtitle = "Continuous drag scrub vertical alphabet index on App Drawer edge",
+                checked = showAlphabetIndex,
+                onCheckedChange = onSetShowAlphabetIndex
+            )
+
+            ToggleOptionRow(
+                title = "Haptic Vibration Feedback",
+                subtitle = "Haptics on Context Ring selections and gestures",
+                checked = hapticsEnabled,
+                onCheckedChange = onSetHapticsEnabled
+            )
+        }
+
+        item {
+            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            Spacer(modifier = Modifier.height(8.dp))
+            Text("Home Screen Pages Count", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            Spacer(modifier = Modifier.height(10.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                pageCounts.forEach { count ->
+                    val isSelected = homePageCount == count
+                    Button(
+                        onClick = { onSetHomePageCount(count) },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("$count ${if (count == 1) "Page" else "Pages"}", fontSize = 12.sp, color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface)
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(30.dp))
+        }
+    }
+}
+
+@Composable
+private fun ToggleOptionRow(
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onCheckedChange(!checked) }
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+            Text(subtitle, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange
+        )
+    }
+}
+

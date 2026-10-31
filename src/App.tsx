@@ -267,19 +267,18 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#0F1115] text-[#ECEFF4] flex flex-col font-sans selection:bg-[#2A9D8F]/30 selection:text-[#2A9D8F]">
       {/* Top Navbar */}
-      <header className="h-14 border-b border-white/10 bg-[#16181D]/90 backdrop-blur-md px-6 flex items-center justify-between z-30 shrink-0">
+      <header className="h-14 border-b border-white/10 bg-[#07090E]/95 backdrop-blur-md px-6 flex items-center justify-between z-30 shrink-0">
         <div className="flex items-center gap-3">
-          <div
-            style={{ backgroundColor: settings.accentColor }}
-            className="w-8 h-8 rounded-xl flex items-center justify-center font-bold text-white text-xs shadow-md"
-          >
-            NF
-          </div>
+          <img
+            src="/novaforge_logo.png"
+            alt="NovaForge Logo"
+            className="w-8 h-8 rounded-xl object-contain shadow-md border border-cyan-500/20 bg-[#07090E]"
+          />
           <div>
             <div className="flex items-center gap-2">
               <span className="font-bold text-sm tracking-tight text-white">NovaForge Launcher</span>
-              <span className="text-[10px] font-mono bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full">
-                Native Android Home
+              <span className="text-[10px] font-mono bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 px-2 py-0.5 rounded-full">
+                Cosmic Orbit Edition
               </span>
             </div>
             <p className="text-[11px] text-neutral-400 hidden sm:block">
@@ -415,6 +414,7 @@ export default function App() {
                   onLaunchApp={handleLaunchApp}
                   onAppLongPress={(app) => setSelectedAppForAction(app)}
                   onBackToHome={() => setActiveScreenIndex(1)}
+                  onOpenContextRing={handleTriggerContextRing}
                 />
               )}
 
@@ -577,6 +577,7 @@ export default function App() {
                     onLaunchApp={handleLaunchApp}
                     onAppLongPress={(app) => setSelectedAppForAction(app)}
                     onBackToHome={() => {}}
+                    onOpenContextRing={handleTriggerContextRing}
                   />
                 </PhoneFrame>
               </div>

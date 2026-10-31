@@ -1,9 +1,13 @@
 package com.novaforge.launcher.ui.applist
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -18,11 +22,17 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.novaforge.launcher.data.model.AppItem
+import com.novaforge.launcher.service.MediaPlaybackInfo
+import com.novaforge.launcher.ui.home.CompactMusicWidget
 import kotlinx.coroutines.launch
 import java.util.SortedMap
 
@@ -42,7 +52,15 @@ fun AppListScreen(
     onRequestUninstall: (String) -> Unit = {},
     iconAssignments: Map<String, com.novaforge.launcher.icon.IconAssignment> = emptyMap(),
     animations: List<com.novaforge.launcher.icon.AnimatedIconItem> = emptyList(),
-    onAssignIcon: (String) -> Unit = {}
+    onAssignIcon: (String) -> Unit = {},
+    // Redesign preferences
+    showAlphabetIndex: Boolean = true,
+    showMusicDrawer: Boolean = false,
+    mediaPlaybackInfo: MediaPlaybackInfo = MediaPlaybackInfo(),
+    onPlayPauseMedia: () -> Unit = {},
+    onSkipNextMedia: () -> Unit = {},
+    onSkipPreviousMedia: () -> Unit = {},
+    onTriggerContextRing: ((Float, Float, String?, String?) -> Unit)? = null
 ) {
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
@@ -50,8 +68,44 @@ fun AppListScreen(
 
     val categories = listOf("All", "Social", "Productivity", "Tools", "Media", "Games")
 
-    // Flattened alphabet index to scroll positions
-    val alphabetKeys = remember(appsGrouped) { appsGrouped.keys.toList() }
+    // Full vertical index items: Top arrow, Star (favorites/recent), A-Z, #
+    val alphabetRail = remember {
+        listOf("↑", "★") + ('A'..'Z').map { it.toString() } + listOf("#")
+    }
+
+    var activeScrubLetter by remember { mutableStateOf<String?>(null) }
+    var railHeightPx by remember { androidx.compose.runtime.mutableFloatStateOf(1f) }
+
+    // Map each section header to its item index in the LazyColumn
+    fun calculateTargetIndex(item: String): Int {
+        if (item == "↑") return 0
+        if (item == "★") return 0
+
+        var currentIndex = 0
+        val targetChar = item.firstOrNull() ?: return 0
+
+        for ((initial, list) in appsGrouped) {
+            if (initial == targetChar) {
+                return currentIndex
+            }
+            // 1 for the header item + size of the list
+            currentIndex += 1 + list.size
+        }
+        return 0
+    }
+
+    fun handleRailTouch(yPos: Float) {
+        if (railHeightPx <= 0f) return
+        val fraction = (yPos / railHeightPx).coerceIn(0f, 0.999f)
+        val index = (fraction * alphabetRail.size).toInt().coerceIn(0, alphabetRail.size - 1)
+        val selectedLetter = alphabetRail[index]
+        activeScrubLetter = selectedLetter
+
+        val targetLazyIndex = calculateTargetIndex(selectedLetter)
+        coroutineScope.launch {
+            listState.scrollToItem(targetLazyIndex)
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -61,9 +115,9 @@ fun AppListScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 20.dp)
+                .padding(horizontal = 18.dp)
         ) {
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             // Search Bar
             OutlinedTextField(
@@ -84,7 +138,7 @@ fun AppListScreen(
                         Icons.Default.Search,
                         contentDescription = "Search",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(19.dp)
                     )
                 },
                 trailingIcon = {
@@ -102,12 +156,26 @@ fun AppListScreen(
                 shape = RoundedCornerShape(26.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.surfaceVariant,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
                     focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
                     unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f)
                 ),
                 singleLine = true
             )
+
+            // Optional compact media widget at top of drawer
+            if (showMusicDrawer && searchQuery.isEmpty()) {
+                var isExpanded by remember { mutableStateOf(false) }
+                Spacer(modifier = Modifier.height(10.dp))
+                CompactMusicWidget(
+                    info = mediaPlaybackInfo,
+                    isExpanded = isExpanded,
+                    onPlayPause = onPlayPauseMedia,
+                    onSkipNext = onSkipNextMedia,
+                    onSkipPrevious = onSkipPreviousMedia,
+                    onToggleExpanded = { isExpanded = !isExpanded }
+                )
+            }
 
             Spacer(modifier = Modifier.height(10.dp))
 
@@ -141,18 +209,18 @@ fun AppListScreen(
 
             // Recently Used Apps Shelf (when not actively searching)
             AnimatedVisibility(visible = searchQuery.isEmpty() && selectedCategory == "All" && recentApps.isNotEmpty()) {
-                Column(modifier = Modifier.padding(top = 10.dp, bottom = 6.dp)) {
+                Column(modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)) {
                     Text(
                         text = "RECENT",
                         fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.primary,
                         letterSpacing = 1.sp,
                         modifier = Modifier.padding(bottom = 6.dp)
                     )
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
                         recentApps.take(4).forEach { app ->
                             val assignment = iconAssignments[app.packageName]
@@ -161,14 +229,23 @@ fun AppListScreen(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 modifier = Modifier
                                     .width(64.dp)
-                                    .clickable { onLaunchApp(app.packageName) }
+                                    .combinedClickable(
+                                        onClick = { onLaunchApp(app.packageName) },
+                                        onLongClick = {
+                                            if (onTriggerContextRing != null) {
+                                                onTriggerContextRing(200f, 300f, app.packageName, null)
+                                            } else {
+                                                selectedAppForAction = app
+                                            }
+                                        }
+                                    )
                             ) {
                                 com.novaforge.launcher.icon.AnimatedAppIcon(
                                     packageName = app.packageName,
                                     label = app.label,
                                     fallbackColor = Color(app.colorHex),
-                                    size = 44.dp,
-                                    shape = RoundedCornerShape(14.dp),
+                                    size = 42.dp,
+                                    shape = RoundedCornerShape(13.dp),
                                     assignment = assignment,
                                     animationItem = animItem
                                 )
@@ -182,12 +259,12 @@ fun AppListScreen(
                             }
                         }
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                    Spacer(modifier = Modifier.height(6.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
                 }
             }
 
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
             // Main Alphabetical App List with A-Z rail
             Row(modifier = Modifier.weight(1f)) {
@@ -231,9 +308,15 @@ fun AppListScreen(
                                     .fillMaxWidth()
                                     .combinedClickable(
                                         onClick = { onLaunchApp(app.packageName) },
-                                        onLongClick = { selectedAppForAction = app }
+                                        onLongClick = {
+                                            if (onTriggerContextRing != null) {
+                                                onTriggerContextRing(200f, 300f, app.packageName, null)
+                                            } else {
+                                                selectedAppForAction = app
+                                            }
+                                        }
                                     )
-                                    .padding(vertical = 8.dp),
+                                    .padding(vertical = 7.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 com.novaforge.launcher.icon.AnimatedAppIcon(
@@ -275,37 +358,77 @@ fun AppListScreen(
                     }
                 }
 
-                // Fast scroll A–Z rail on right
-                if (alphabetKeys.size > 2) {
+                // Vertical A–Z Index Rail on Right (Continuous tap & drag scrub)
+                if (showAlphabetIndex && appsGrouped.size > 2) {
                     Column(
                         modifier = Modifier
                             .padding(start = 6.dp)
-                            .align(Alignment.CenterVertically),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        alphabetKeys.forEach { ch ->
-                            Text(
-                                text = ch.toString(),
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                                modifier = Modifier
-                                    .clickable {
-                                        coroutineScope.launch {
-                                            // Find index of header
-                                            var targetIndex = 0
-                                            for (k in alphabetKeys) {
-                                                if (k == ch) break
-                                                targetIndex += 1 + (appsGrouped[k]?.size ?: 0)
-                                            }
-                                            listState.animateScrollToItem(targetIndex)
-                                        }
+                            .fillMaxHeight()
+                            .onGloballyPositioned { coordinates ->
+                                railHeightPx = coordinates.size.height.toFloat()
+                            }
+                            .pointerInput(alphabetRail) {
+                                detectTapGestures(
+                                    onPress = { offset ->
+                                        handleRailTouch(offset.y)
+                                        tryAwaitRelease()
+                                        activeScrubLetter = null
                                     }
-                                    .padding(vertical = 2.dp)
+                                )
+                            }
+                            .pointerInput(alphabetRail) {
+                                detectDragGestures(
+                                    onDragStart = { offset -> handleRailTouch(offset.y) },
+                                    onDrag = { change, _ ->
+                                        change.consume()
+                                        handleRailTouch(change.position.y)
+                                    },
+                                    onDragEnd = { activeScrubLetter = null },
+                                    onDragCancel = { activeScrubLetter = null }
+                                )
+                            },
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        alphabetRail.forEach { ch ->
+                            Text(
+                                text = ch,
+                                fontSize = if (ch == "↑" || ch == "★") 10.sp else 9.sp,
+                                fontWeight = if (activeScrubLetter == ch) FontWeight.Black else FontWeight.Medium,
+                                color = if (activeScrubLetter == ch) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
+                                },
+                                modifier = Modifier.padding(horizontal = 2.dp)
                             )
                         }
                     }
                 }
+            }
+        }
+
+        // Floating Letter Indicator Bubble (appears while user scrubs vertical rail)
+        AnimatedVisibility(
+            visible = activeScrubLetter != null,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.align(Alignment.Center)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(72.dp)
+                    .shadow(12.dp, CircleShape)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = activeScrubLetter ?: "",
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
             }
         }
 
@@ -383,29 +506,43 @@ fun AppListScreen(
                         }
                     )
 
-                    // Action: Hide App
-                    AppActionItem(
-                        icon = Icons.Default.VisibilityOff,
-                        title = "Hide Application",
-                        subtitle = "Move to PIN-protected hidden apps vault",
-                        onClick = {
-                            onHideApp(app.packageName)
-                            selectedAppForAction = null
-                        }
-                    )
+                    // Action: Trigger Context Ring
+                    if (onTriggerContextRing != null) {
+                        AppActionItem(
+                            icon = Icons.Default.RadioButtonChecked,
+                            title = "Open Context Ring",
+                            subtitle = "Radial menu for app shortcuts and actions",
+                            onClick = {
+                                val pkg = app.packageName
+                                selectedAppForAction = null
+                                onTriggerContextRing(200f, 400f, pkg, null)
+                            }
+                        )
+                    }
 
                     // Action: App Info
                     AppActionItem(
                         icon = Icons.Default.Info,
-                        title = "App Info",
-                        subtitle = "Open system storage, permissions & settings",
+                        title = "Application Info",
+                        subtitle = "System permissions, storage & notifications",
                         onClick = {
                             onOpenAppInfo(app.packageName)
                             selectedAppForAction = null
                         }
                     )
 
-                    // Action: Uninstall App
+                    // Action: Hide App
+                    AppActionItem(
+                        icon = Icons.Default.VisibilityOff,
+                        title = "Hide Application",
+                        subtitle = "Protected behind PIN lock in Settings",
+                        onClick = {
+                            onHideApp(app.packageName)
+                            selectedAppForAction = null
+                        }
+                    )
+
+                    // Action: Request Uninstall
                     AppActionItem(
                         icon = Icons.Default.Delete,
                         title = "Uninstall",
@@ -424,7 +561,7 @@ fun AppListScreen(
 
 @Composable
 private fun AppActionItem(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     title: String,
     subtitle: String,
     isDestructive: Boolean = false,
@@ -433,8 +570,9 @@ private fun AppActionItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 12.dp),
+            .clip(RoundedCornerShape(12.dp))
+            .clickable { onClick() }
+            .padding(vertical = 10.dp, horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(

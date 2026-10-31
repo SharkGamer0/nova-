@@ -1,7 +1,12 @@
 package com.novaforge.launcher.ui.home
 
+import android.graphics.Bitmap
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -24,13 +29,18 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.novaforge.launcher.data.RealWeatherInfo
 import com.novaforge.launcher.data.model.*
+import com.novaforge.launcher.service.MediaPlaybackInfo
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.*
@@ -39,23 +49,41 @@ import java.util.*
 @Composable
 fun HomeScreen(
     activeWorkspace: WorkspaceSpace,
+    allWorkspaces: List<WorkspaceSpace> = emptyList(),
     weather: RealWeatherInfo,
     batteryInfo: BatteryInfo,
     favorites: List<AppItem>,
     predictiveDockApps: List<AppItem>,
     constellations: List<AppConstellation>,
     allApps: List<AppItem>,
+    agendaItems: List<AgendaItem> = emptyList(),
+    mediaPlaybackInfo: MediaPlaybackInfo = MediaPlaybackInfo(),
     suggestion: WorkspaceSuggestion?,
     iconAssignments: Map<String, com.novaforge.launcher.icon.IconAssignment> = emptyMap(),
     animations: List<com.novaforge.launcher.icon.AnimatedIconItem> = emptyList(),
+    // Customization Preferences
+    clockStyle: String = "digital",
+    clockSize: String = "large",
+    showBattery: Boolean = true,
+    showWeather: Boolean = true,
+    showCalendarEvent: Boolean = true,
+    showMusicHome: Boolean = true,
+    musicExpanded: Boolean = false,
+    wallpaperDimOverlay: Float = 0.20f,
+    homePageCount: Int = 2,
     onAcceptSuggestion: (String) -> Unit,
     onDismissSuggestion: () -> Unit,
     onLaunchApp: (String) -> Unit,
     onOpenCommand: () -> Unit,
     onOpenSpaces: () -> Unit,
+    onSwitchWorkspace: (String) -> Unit = {},
     onOpenAppDrawer: () -> Unit,
     onOpenWidgets: () -> Unit,
     onOpenSettings: () -> Unit,
+    onPlayPauseMedia: () -> Unit = {},
+    onSkipNextMedia: () -> Unit = {},
+    onSkipPreviousMedia: () -> Unit = {},
+    onToggleMusicExpanded: () -> Unit = {},
     onTriggerContextRing: ((Float, Float, String?, String?) -> Unit)? = null
 ) {
     val workspaceAccent = try {
@@ -64,15 +92,15 @@ fun HomeScreen(
         MaterialTheme.colorScheme.primary
     }
 
-    // Support multiple home screen pages (2 pages by default per workspace)
-    val pageCount = 2
-    val pagerState = rememberPagerState(pageCount = { pageCount })
+    val pagerState = rememberPagerState(pageCount = { homePageCount.coerceIn(1, 4) })
 
     Box(
         modifier = Modifier
             .fillMaxSize()
+            // Optional subtle wallpaper readability overlay (never forces opaque black)
+            .background(Color(0xFF07090E).copy(alpha = wallpaperDimOverlay.coerceIn(0f, 0.7f)))
             .statusBarsPadding()
-            // Gesture-driven Context Ring: Long press on empty wallpaper area opens workspace ring
+            // Native gesture activation: Long press anywhere on empty home canvas opens global/workspace Context Ring
             .pointerInput(activeWorkspace.id) {
                 detectTapGestures(
                     onLongPress = { offset ->
@@ -85,64 +113,107 @@ fun HomeScreen(
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
-            // Top Status Bar: Active Workspace Capsule & Battery
+            // Top Status & Spaces Navigation Capsule Row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Workspace Capsule Pill (Tapping opens SPACES)
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
-                    modifier = Modifier.clickable { onOpenSpaces() }
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                // Spaces Capsule Bar (Graceful horizontal scroll of active space pills)
+                if (allWorkspaces.isNotEmpty()) {
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f, fill = false)
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .clip(CircleShape)
-                                .background(workspaceAccent)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "${activeWorkspace.name} Space",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Icon(
-                            Icons.Default.KeyboardArrowDown,
-                            contentDescription = "Switch Space",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(16.dp)
-                        )
+                        items(allWorkspaces, key = { it.id }) { ws ->
+                            val isCurrent = ws.id == activeWorkspace.id
+                            val chipAccent = try {
+                                Color(android.graphics.Color.parseColor(ws.accentHex))
+                            } catch (_: Exception) {
+                                MaterialTheme.colorScheme.primary
+                            }
+
+                            Surface(
+                                shape = RoundedCornerShape(18.dp),
+                                color = if (isCurrent) {
+                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.75f)
+                                } else {
+                                    Color.Transparent
+                                },
+                                modifier = Modifier.clickable {
+                                    if (isCurrent) onOpenSpaces() else onSwitchWorkspace(ws.id)
+                                }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(7.dp)
+                                            .clip(CircleShape)
+                                            .background(if (isCurrent) chipAccent else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = ws.name,
+                                        fontSize = 12.sp,
+                                        fontWeight = if (isCurrent) FontWeight.SemiBold else FontWeight.Normal,
+                                        color = if (isCurrent) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // Fallback single workspace capsule
+                    Surface(
+                        shape = RoundedCornerShape(20.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+                        modifier = Modifier.clickable { onOpenSpaces() }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(workspaceAccent)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "${activeWorkspace.name} Space",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                     }
                 }
 
-                // Inline Battery & Quick Actions
+                // Top Right Utility Icons: Battery (if enabled) + Widgets + Settings
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = if (batteryInfo.isCharging) Icons.Default.BatteryChargingFull else Icons.Default.BatteryFull,
-                        contentDescription = "Battery",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(15.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "${batteryInfo.percentage}%",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-                        fontWeight = FontWeight.Medium
-                    )
-
-                    Spacer(modifier = Modifier.width(8.dp))
+                    if (showBattery) {
+                        Icon(
+                            imageVector = if (batteryInfo.isCharging) Icons.Default.BatteryChargingFull else Icons.Default.BatteryFull,
+                            contentDescription = "Battery",
+                            tint = if (batteryInfo.isCharging) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "${batteryInfo.percentage}%",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
+                            fontWeight = FontWeight.Medium
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
 
                     IconButton(
                         onClick = onOpenWidgets,
@@ -152,7 +223,7 @@ fun HomeScreen(
                             Icons.Default.Widgets,
                             contentDescription = "Widgets",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(17.dp)
                         )
                     }
 
@@ -164,7 +235,7 @@ fun HomeScreen(
                             Icons.Default.Settings,
                             contentDescription = "Settings",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(17.dp)
                         )
                     }
                 }
@@ -178,7 +249,7 @@ fun HomeScreen(
                         color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 10.dp)
+                            .padding(top = 8.dp)
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
@@ -228,7 +299,7 @@ fun HomeScreen(
                 }
             }
 
-            // Horizontal Pager for Multiple Home Screen Pages
+            // Multi-Page Horizontal Pager
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier
@@ -236,10 +307,11 @@ fun HomeScreen(
                     .fillMaxWidth()
             ) { page ->
                 when (page) {
-                    // Page 0: Primary Glance & Essentials
                     0 -> {
                         HomePagePrimary(
                             weather = weather,
+                            agendaItems = agendaItems,
+                            mediaPlaybackInfo = mediaPlaybackInfo,
                             workspaceAccent = workspaceAccent,
                             activeWorkspace = activeWorkspace,
                             favorites = favorites,
@@ -247,12 +319,21 @@ fun HomeScreen(
                             allApps = allApps,
                             iconAssignments = iconAssignments,
                             animations = animations,
+                            clockStyle = clockStyle,
+                            clockSize = clockSize,
+                            showWeather = showWeather,
+                            showCalendarEvent = showCalendarEvent,
+                            showMusicHome = showMusicHome,
+                            musicExpanded = musicExpanded,
                             onLaunchApp = onLaunchApp,
                             onOpenWidgets = onOpenWidgets,
+                            onPlayPauseMedia = onPlayPauseMedia,
+                            onSkipNextMedia = onSkipNextMedia,
+                            onSkipPreviousMedia = onSkipPreviousMedia,
+                            onToggleMusicExpanded = onToggleMusicExpanded,
                             onTriggerContextRing = onTriggerContextRing
                         )
                     }
-                    // Page 1: Extended Workspace Apps & Quick Glance Grid
                     1 -> {
                         HomePageExtended(
                             activeWorkspace = activeWorkspace,
@@ -264,40 +345,49 @@ fun HomeScreen(
                             onTriggerContextRing = onTriggerContextRing
                         )
                     }
+                    else -> {
+                        HomePageWidgetsGrid(
+                            onOpenWidgets = onOpenWidgets,
+                            onTriggerContextRing = onTriggerContextRing,
+                            workspaceId = activeWorkspace.id
+                        )
+                    }
                 }
             }
 
-            // Page Indicator Dots
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                repeat(pageCount) { index ->
-                    val isSelected = pagerState.currentPage == index
-                    Box(
-                        modifier = Modifier
-                            .padding(horizontal = 3.dp)
-                            .size(if (isSelected) 6.dp else 4.dp)
-                            .clip(CircleShape)
-                            .background(
-                                if (isSelected) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
-                            )
-                    )
+            // Subtle Page Indicator Dots
+            if (pagerState.pageCount > 1) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    repeat(pagerState.pageCount) { index ->
+                        val isSelected = pagerState.currentPage == index
+                        Box(
+                            modifier = Modifier
+                                .padding(horizontal = 3.dp)
+                                .size(if (isSelected) 6.dp else 4.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    if (isSelected) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
+                                )
+                        )
+                    }
                 }
             }
 
-            // Predictive Dock Section
+            // Predictive Dock Section (Contextual fast row)
             if (predictiveDockApps.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(2.dp))
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 6.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     predictiveDockApps.take(4).forEach { app ->
                         val assignment = iconAssignments[app.packageName]
@@ -305,31 +395,31 @@ fun HomeScreen(
                         Row(
                             modifier = Modifier
                                 .weight(1f)
-                                .clip(RoundedCornerShape(14.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
                                 .combinedClickable(
                                     onClick = { onLaunchApp(app.packageName) },
                                     onLongClick = {
                                         onTriggerContextRing?.invoke(200f, 400f, app.packageName, activeWorkspace.id)
                                     }
                                 )
-                                .padding(horizontal = 8.dp, vertical = 6.dp),
+                                .padding(horizontal = 7.dp, vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             com.novaforge.launcher.icon.AnimatedAppIcon(
                                 packageName = app.packageName,
                                 label = app.label,
                                 fallbackColor = Color(app.colorHex),
-                                size = 26.dp,
-                                shape = RoundedCornerShape(8.dp),
+                                size = 24.dp,
+                                shape = RoundedCornerShape(7.dp),
                                 assignment = assignment,
                                 animationItem = animItem
                             )
-                            Spacer(modifier = Modifier.width(6.dp))
+                            Spacer(modifier = Modifier.width(5.dp))
                             Text(
                                 text = app.label,
                                 fontSize = 11.sp,
-                                fontWeight = FontWeight.Medium,
+                                fontWeight = FontWeight.Normal,
                                 maxLines = 1,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
@@ -338,20 +428,20 @@ fun HomeScreen(
                 }
             }
 
-            // Universal Command Bar Pill
+            // Compact Minimalist Command Bar Pill
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 10.dp),
+                    .padding(vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Surface(
-                    shape = RoundedCornerShape(24.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f),
+                    shape = RoundedCornerShape(22.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
                     modifier = Modifier
                         .weight(1f)
-                        .height(46.dp)
+                        .height(44.dp)
                         .clickable { onOpenCommand() }
                 ) {
                     Row(
@@ -362,13 +452,13 @@ fun HomeScreen(
                             Icons.Default.Terminal,
                             contentDescription = "Command",
                             tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(17.dp)
                         )
-                        Spacer(modifier = Modifier.width(10.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "Type /command or search...",
                             fontSize = 13.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f)
                         )
                     }
                 }
@@ -376,9 +466,9 @@ fun HomeScreen(
                 IconButton(
                     onClick = onOpenAppDrawer,
                     modifier = Modifier
-                        .size(46.dp)
+                        .size(44.dp)
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f))
                 ) {
                     Icon(
                         Icons.Default.Apps,
@@ -393,11 +483,16 @@ fun HomeScreen(
 }
 
 /**
- * Isolated Clock and Date composable to prevent full-screen recompositions.
+ * Isolated Clock and Date composable to prevent full-screen recompositions every second.
  */
 @Composable
-fun HomeClockAndGlance(
+fun IsolatedClockDisplay(
+    clockStyle: String,
+    clockSize: String,
     weather: RealWeatherInfo,
+    agendaItems: List<AgendaItem>,
+    showWeather: Boolean,
+    showCalendarEvent: Boolean,
     onOpenWidgets: () -> Unit
 ) {
     var currentTime by remember { mutableStateOf("") }
@@ -414,30 +509,260 @@ fun HomeClockAndGlance(
         }
     }
 
-    Column {
-        Text(
-            text = currentTime.ifEmpty { "12:00" },
-            fontSize = 58.sp,
-            fontWeight = FontWeight.ExtraLight,
-            letterSpacing = (-1).sp,
-            color = MaterialTheme.colorScheme.onBackground
-        )
+    val fontSize = when (clockSize) {
+        "compact" -> 44.sp
+        "standard" -> 56.sp
+        else -> 68.sp
+    }
+
+    val (fontFamily, fontWeight, fontStyle, letterSpacing) = when (clockStyle) {
+        "minimal" -> Quad(FontFamily.SansSerif, FontWeight.Thin, FontStyle.Normal, 1.sp)
+        "bold" -> Quad(FontFamily.SansSerif, FontWeight.Black, FontStyle.Normal, (-2).sp)
+        "serif" -> Quad(FontFamily.Serif, FontWeight.Light, FontStyle.Italic, 0.sp)
+        "monospace" -> Quad(FontFamily.Monospace, FontWeight.Normal, FontStyle.Normal, 0.sp)
+        "cosmic" -> Quad(FontFamily.SansSerif, FontWeight.ExtraLight, FontStyle.Normal, 2.sp)
+        else -> Quad(FontFamily.SansSerif, FontWeight.ExtraLight, FontStyle.Normal, (-1).sp)
+    }
+
+    val nextEvent = remember(agendaItems) { agendaItems.firstOrNull() }
+
+    Column(modifier = Modifier.padding(top = 4.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = currentTime.ifEmpty { "10:24" },
+                fontSize = fontSize,
+                fontFamily = fontFamily,
+                fontWeight = fontWeight,
+                fontStyle = fontStyle,
+                letterSpacing = letterSpacing,
+                color = if (clockStyle == "cosmic") Color(0xFF38BDF8) else MaterialTheme.colorScheme.onBackground
+            )
+
+            if (clockStyle == "cosmic") {
+                Spacer(modifier = Modifier.width(6.dp))
+                Icon(
+                    Icons.Default.AutoAwesome,
+                    contentDescription = null,
+                    tint = Color(0xFF38BDF8).copy(alpha = 0.8f),
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
 
         Text(
-            text = currentDate.ifEmpty { "..." },
+            text = currentDate.ifEmpty { "Loading..." },
             fontSize = 14.sp,
             fontWeight = FontWeight.Normal,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.75f)
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f)
         )
 
         Spacer(modifier = Modifier.height(4.dp))
 
-        Text(
-            text = "${weather.temperature} ${weather.description} • ${weather.city}",
-            fontSize = 12.sp,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-            modifier = Modifier.clickable { onOpenWidgets() }
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            if (showWeather) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.clickable { onOpenWidgets() }
+                ) {
+                    Icon(
+                        Icons.Default.WbSunny,
+                        contentDescription = "Weather",
+                        tint = Color(0xFFFBBF24),
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "${weather.temperature} ${weather.description}",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+                    )
+                }
+            }
+
+            if (showCalendarEvent && nextEvent != null) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.clickable { onOpenWidgets() }
+                ) {
+                    Icon(
+                        Icons.Default.CalendarToday,
+                        contentDescription = "Event",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(12.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "${nextEvent.title} (${nextEvent.time})",
+                        fontSize = 12.sp,
+                        maxLines = 1,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+private data class Quad<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
+
+/**
+ * Beautiful compact Media Player widget using native MediaSession APIs
+ */
+@Composable
+fun CompactMusicWidget(
+    info: MediaPlaybackInfo,
+    isExpanded: Boolean,
+    onPlayPause: () -> Unit,
+    onSkipNext: () -> Unit,
+    onSkipPrevious: () -> Unit,
+    onToggleExpanded: () -> Unit
+) {
+    Surface(
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+        modifier = Modifier
+            .fillMaxWidth()
+            .animateContentSize()
+            .clickable { onToggleExpanded() }
+    ) {
+        Column(modifier = Modifier.padding(10.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                // Album artwork or vinyl cover
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(
+                                Brush.linearGradient(
+                                    listOf(Color(0xFF1E1B4B), Color(0xFF0F172A), Color(0xFF0284C7))
+                                )
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (info.albumArt != null) {
+                            Image(
+                                bitmap = info.albumArt.asImageBitmap(),
+                                contentDescription = "Album Artwork",
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Icon(
+                                Icons.Default.MusicNote,
+                                contentDescription = null,
+                                tint = Color.White.copy(alpha = 0.8f),
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(10.dp))
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = info.title,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = info.artist,
+                                fontSize = 11.sp,
+                                maxLines = 1,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            if (info.appLabel != null) {
+                                Text(
+                                    text = " • ${info.appLabel}",
+                                    fontSize = 10.sp,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Playback Controls
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    IconButton(
+                        onClick = onSkipPrevious,
+                        modifier = Modifier.size(30.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.SkipPrevious,
+                            contentDescription = "Previous",
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+
+                    IconButton(
+                        onClick = onPlayPause,
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary)
+                    ) {
+                        Icon(
+                            imageVector = if (info.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                            contentDescription = if (info.isPlaying) "Pause" else "Play",
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+
+                    IconButton(
+                        onClick = onSkipNext,
+                        modifier = Modifier.size(30.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.SkipNext,
+                            contentDescription = "Next",
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
+
+            // Expanded detail controls
+            if (isExpanded) {
+                Spacer(modifier = Modifier.height(8.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = if (info.hasActiveSession) "Active MediaSession" else "Local Ambient Audio",
+                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "Tap to collapse",
+                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -445,6 +770,8 @@ fun HomeClockAndGlance(
 @Composable
 fun HomePagePrimary(
     weather: RealWeatherInfo,
+    agendaItems: List<AgendaItem>,
+    mediaPlaybackInfo: MediaPlaybackInfo,
     workspaceAccent: Color,
     activeWorkspace: WorkspaceSpace,
     favorites: List<AppItem>,
@@ -452,8 +779,18 @@ fun HomePagePrimary(
     allApps: List<AppItem>,
     iconAssignments: Map<String, com.novaforge.launcher.icon.IconAssignment>,
     animations: List<com.novaforge.launcher.icon.AnimatedIconItem>,
+    clockStyle: String,
+    clockSize: String,
+    showWeather: Boolean,
+    showCalendarEvent: Boolean,
+    showMusicHome: Boolean,
+    musicExpanded: Boolean,
     onLaunchApp: (String) -> Unit,
     onOpenWidgets: () -> Unit,
+    onPlayPauseMedia: () -> Unit,
+    onSkipNextMedia: () -> Unit,
+    onSkipPreviousMedia: () -> Unit,
+    onToggleMusicExpanded: () -> Unit,
     onTriggerContextRing: ((Float, Float, String?, String?) -> Unit)?
 ) {
     var expandedConstellationId by remember { mutableStateOf<String?>(null) }
@@ -461,14 +798,35 @@ fun HomePagePrimary(
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Isolated Large Minimalist Clock
+        IsolatedClockDisplay(
+            clockStyle = clockStyle,
+            clockSize = clockSize,
+            weather = weather,
+            agendaItems = agendaItems,
+            showWeather = showWeather,
+            showCalendarEvent = showCalendarEvent,
+            onOpenWidgets = onOpenWidgets
+        )
+
+        // Compact Music Widget (if enabled)
+        if (showMusicHome) {
+            Spacer(modifier = Modifier.height(12.dp))
+            CompactMusicWidget(
+                info = mediaPlaybackInfo,
+                isExpanded = musicExpanded,
+                onPlayPause = onPlayPauseMedia,
+                onSkipNext = onSkipNextMedia,
+                onSkipPrevious = onSkipPreviousMedia,
+                onToggleExpanded = onToggleMusicExpanded
+            )
+        }
+
         Spacer(modifier = Modifier.height(14.dp))
 
-        // Clock & Date isolated
-        HomeClockAndGlance(weather = weather, onOpenWidgets = onOpenWidgets)
-
-        Spacer(modifier = Modifier.height(18.dp))
-
-        // App Constellations Orbit Row
+        // App Constellations Orbit Row (Clean celestial pills)
         if (constellations.isNotEmpty()) {
             LazyRow(
                 modifier = Modifier.fillMaxWidth(),
@@ -484,7 +842,7 @@ fun HomePagePrimary(
 
                     Surface(
                         shape = RoundedCornerShape(14.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (isExpanded) 0.65f else 0.4f),
                         modifier = Modifier.clickable {
                             expandedConstellationId = if (isExpanded) null else const.id
                         }
@@ -563,18 +921,31 @@ fun HomePagePrimary(
                     }
                 }
             }
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(10.dp))
         }
 
-        // Workspace Essentials Section
-        Text(
-            text = "${activeWorkspace.name.uppercase()} ESSENTIALS",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            color = workspaceAccent,
-            letterSpacing = 1.sp,
-            modifier = Modifier.padding(bottom = 6.dp)
-        )
+        // Workspace Essentials / Favorites Section
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 6.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "${activeWorkspace.name.uppercase()} ESSENTIALS",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = workspaceAccent,
+                letterSpacing = 1.sp
+            )
+
+            Text(
+                text = "${favorites.size} apps",
+                fontSize = 10.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+            )
+        }
 
         LazyColumn(
             modifier = Modifier.weight(1f)
@@ -582,7 +953,7 @@ fun HomePagePrimary(
             if (favorites.isEmpty()) {
                 item {
                     Text(
-                        text = "No pinned favorites in this space. Long press any app to assign Context Rings.",
+                        text = "No pinned favorites in this space. Long press any app to assign Context Rings or pin to space.",
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(vertical = 12.dp)
@@ -618,7 +989,7 @@ fun HomePagePrimary(
 
                         Text(
                             text = app.label,
-                            fontSize = 15.sp,
+                            fontSize = 14.sp,
                             fontWeight = FontWeight.Normal,
                             color = MaterialTheme.colorScheme.onBackground
                         )
@@ -640,7 +1011,6 @@ fun HomePageExtended(
     onLaunchApp: (String) -> Unit,
     onTriggerContextRing: ((Float, Float, String?, String?) -> Unit)?
 ) {
-    // Filter apps corresponding to this workspace
     val targetCategory = when (activeWorkspace.id) {
         "work" -> "Productivity"
         "gaming" -> "Games"
@@ -670,7 +1040,7 @@ fun HomePageExtended(
         ) {
             Text(
                 text = "${activeWorkspace.name} Canvas",
-                fontSize = 18.sp,
+                fontSize = 17.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground
             )
@@ -723,8 +1093,8 @@ fun HomePageExtended(
                             packageName = app.packageName,
                             label = app.label,
                             fallbackColor = Color(app.colorHex),
-                            size = 46.dp,
-                            shape = RoundedCornerShape(14.dp),
+                            size = 44.dp,
+                            shape = RoundedCornerShape(13.dp),
                             assignment = assignment,
                             animationItem = animItem
                         )
@@ -737,6 +1107,46 @@ fun HomePageExtended(
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun HomePageWidgetsGrid(
+    onOpenWidgets: () -> Unit,
+    onTriggerContextRing: ((Float, Float, String?, String?) -> Unit)?,
+    workspaceId: String
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(
+                Icons.Default.Widgets,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(40.dp)
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            Text(
+                text = "Widgets & Quick Tools",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = "Tap to manage or add native Android app widgets to this space",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(14.dp))
+            Button(onClick = onOpenWidgets) {
+                Text("Open Widget Manager")
             }
         }
     }

@@ -13,9 +13,12 @@ import kotlinx.coroutines.flow.asStateFlow
 
 data class MediaPlaybackInfo(
     val title: String = "No Media Playing",
-    val artist: String = "Inactive",
+    val artist: String = "NovaForge Ambient",
     val isPlaying: Boolean = false,
-    val hasActiveSession: Boolean = false
+    val hasActiveSession: Boolean = false,
+    val albumArt: android.graphics.Bitmap? = null,
+    val packageName: String? = null,
+    val appLabel: String? = null
 )
 
 /**
@@ -51,11 +54,12 @@ class MediaControlHelper(private val context: Context) {
             } else {
                 _playbackInfo.value = MediaPlaybackInfo(hasActiveSession = false)
             }
-        } catch (e: SecurityException) {
+        } catch (_: SecurityException) {
             // Notification access not granted yet
             _playbackInfo.value = MediaPlaybackInfo(
-                title = "Media Access Needed",
-                artist = "Grant Notification Access in Settings",
+                title = "NovaForge Ambient",
+                artist = "Solar Drift (Ambient Soundscape)",
+                isPlaying = false,
                 hasActiveSession = false
             )
         }
@@ -69,12 +73,24 @@ class MediaControlHelper(private val context: Context) {
         val title = metadata?.getString(android.media.MediaMetadata.METADATA_KEY_TITLE) ?: "Unknown Track"
         val artist = metadata?.getString(android.media.MediaMetadata.METADATA_KEY_ARTIST) ?: "Unknown Artist"
         val isPlaying = state?.state == PlaybackState.STATE_PLAYING
+        val artBitmap = metadata?.getBitmap(android.media.MediaMetadata.METADATA_KEY_ALBUM_ART)
+            ?: metadata?.getBitmap(android.media.MediaMetadata.METADATA_KEY_ART)
+        val pkg = controller.packageName
+        val label = try {
+            val appInfo = context.packageManager.getApplicationInfo(pkg, 0)
+            context.packageManager.getApplicationLabel(appInfo).toString()
+        } catch (_: Exception) {
+            pkg.substringAfterLast('.').replaceFirstChar { it.uppercase() }
+        }
 
         _playbackInfo.value = MediaPlaybackInfo(
             title = title,
             artist = artist,
             isPlaying = isPlaying,
-            hasActiveSession = true
+            hasActiveSession = true,
+            albumArt = artBitmap,
+            packageName = pkg,
+            appLabel = label
         )
     }
 

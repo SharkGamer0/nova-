@@ -16,6 +16,7 @@ import com.novaforge.launcher.ui.home.HomeScreen
 import com.novaforge.launcher.ui.intelligence.AutomationScreen
 import com.novaforge.launcher.ui.settings.SettingsScreen
 import com.novaforge.launcher.ui.spaces.SpacesScreen
+import com.novaforge.launcher.ui.splash.LauncherSplashScreen
 import com.novaforge.launcher.ui.widgets.WidgetsScreen
 
 @Composable
@@ -61,6 +62,7 @@ fun LauncherRootScreen(
     val automationRules by viewModel.automationRules.collectAsState()
     val automationsEnabled by viewModel.automationsEnabled.collectAsState()
     val favoriteCommands by viewModel.favoriteCommands.collectAsState()
+    val recentCommands by viewModel.recentCommands.collectAsState()
     val activeSuggestion by viewModel.activeSuggestion.collectAsState()
 
     val animations by viewModel.animations.collectAsState()
@@ -71,9 +73,26 @@ fun LauncherRootScreen(
     val contextRingConfig by viewModel.contextRingConfig.collectAsState()
     val activeRingSession by viewModel.activeRingSession.collectAsState()
 
+    // Redesign Preferences
+    val clockStyle by viewModel.clockStyle.collectAsState()
+    val clockSize by viewModel.clockSize.collectAsState()
+    val showBattery by viewModel.showBattery.collectAsState()
+    val showWeather by viewModel.showWeather.collectAsState()
+    val showCalendarEvent by viewModel.showCalendarEvent.collectAsState()
+    val showMusicHome by viewModel.showMusicHome.collectAsState()
+    val showMusicDrawer by viewModel.showMusicDrawer.collectAsState()
+    val musicExpanded by viewModel.musicExpanded.collectAsState()
+    val showAlphabetIndex by viewModel.showAlphabetIndex.collectAsState()
+    val wallpaperDimOverlay by viewModel.wallpaperDimOverlay.collectAsState()
+    val hapticsEnabled by viewModel.hapticsEnabled.collectAsState()
+    val homePageCount by viewModel.homePageCount.collectAsState()
+    val mediaPlaybackInfo by viewModel.mediaPlaybackInfo.collectAsState()
+    val agendaItems by viewModel.agendaItems.collectAsState()
+
     var showAssignmentDialog by remember { androidx.compose.runtime.mutableStateOf(false) }
     var assignmentDialogTargetApp by remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
     var assignmentDialogTargetAnim by remember { androidx.compose.runtime.mutableStateOf<com.novaforge.launcher.icon.AnimatedIconItem?>(null) }
+    var showSplash by remember { androidx.compose.runtime.mutableStateOf(true) }
 
     // Filter visible apps: Exclude hidden apps from normal drawer
     val visibleApps = apps.filter { app ->
@@ -150,21 +169,40 @@ fun LauncherRootScreen(
                         assignmentDialogTargetApp = pkg
                         assignmentDialogTargetAnim = null
                         showAssignmentDialog = true
-                    }
+                    },
+                    showAlphabetIndex = showAlphabetIndex,
+                    showMusicDrawer = showMusicDrawer,
+                    mediaPlaybackInfo = mediaPlaybackInfo,
+                    onPlayPauseMedia = { viewModel.playPauseMedia() },
+                    onSkipNextMedia = { viewModel.skipNextMedia() },
+                    onSkipPreviousMedia = { viewModel.skipPreviousMedia() },
+                    onTriggerContextRing = { x, y, pkg, _ -> viewModel.triggerContextRing(x, y, pkg, null) }
                 )
 
                 // 1: HOME (Minimalist Workspace with Workspace Memory, Predictive Dock, Adaptive Suggestions & Constellations)
                 1 -> HomeScreen(
                     activeWorkspace = activeWorkspace,
+                    allWorkspaces = workspaces,
                     weather = weather,
                     batteryInfo = batteryInfo,
                     favorites = workspaceFavorites,
                     predictiveDockApps = predictiveDockApps,
                     constellations = appConstellations,
                     allApps = apps,
+                    agendaItems = agendaItems,
+                    mediaPlaybackInfo = mediaPlaybackInfo,
                     suggestion = activeSuggestion,
                     iconAssignments = iconAssignments,
                     animations = animations,
+                    clockStyle = clockStyle,
+                    clockSize = clockSize,
+                    showBattery = showBattery,
+                    showWeather = showWeather,
+                    showCalendarEvent = showCalendarEvent,
+                    showMusicHome = showMusicHome,
+                    musicExpanded = musicExpanded,
+                    wallpaperDimOverlay = wallpaperDimOverlay,
+                    homePageCount = homePageCount,
                     onAcceptSuggestion = { spaceId ->
                         if (spaceId == "battery") {
                             onOpenSystemSetting("battery")
@@ -180,9 +218,14 @@ fun LauncherRootScreen(
                     },
                     onOpenCommand = { viewModel.navigateToCommand() },
                     onOpenSpaces = { viewModel.navigateToSpaces() },
+                    onSwitchWorkspace = { id -> viewModel.switchWorkspace(id) },
                     onOpenAppDrawer = { viewModel.navigateToAppDrawer() },
                     onOpenWidgets = { viewModel.navigateToWidgets() },
                     onOpenSettings = { viewModel.openSettings() },
+                    onPlayPauseMedia = { viewModel.playPauseMedia() },
+                    onSkipNextMedia = { viewModel.skipNextMedia() },
+                    onSkipPreviousMedia = { viewModel.skipPreviousMedia() },
+                    onToggleMusicExpanded = { viewModel.setMusicExpanded(!musicExpanded) },
                     onTriggerContextRing = { x, y, pkg, ws -> viewModel.triggerContextRing(x, y, pkg, ws) }
                 )
 
@@ -269,6 +312,17 @@ fun LauncherRootScreen(
                     focusWhitelist = focusWhitelist,
                     allApps = apps,
                     screenTime = screenTime,
+                    clockStyle = clockStyle,
+                    clockSize = clockSize,
+                    showBattery = showBattery,
+                    showWeather = showWeather,
+                    showCalendarEvent = showCalendarEvent,
+                    showMusicHome = showMusicHome,
+                    showMusicDrawer = showMusicDrawer,
+                    showAlphabetIndex = showAlphabetIndex,
+                    wallpaperDimOverlay = wallpaperDimOverlay,
+                    hapticsEnabled = hapticsEnabled,
+                    homePageCount = homePageCount,
                     onSaveLocation = { lat, lon, city -> viewModel.setWeatherLocation(lat, lon, city) },
                     onSetTheme = { viewModel.setThemeMode(it) },
                     onSetAccent = { viewModel.setAccentColor(it) },
@@ -280,6 +334,17 @@ fun LauncherRootScreen(
                     onRequestUsagePermission = onRequestUsagePermission,
                     onExportBackup = { viewModel.exportBackup() },
                     onRestoreBackup = { json -> viewModel.restoreBackup(json) },
+                    onSetClockStyle = { viewModel.setClockStyle(it) },
+                    onSetClockSize = { viewModel.setClockSize(it) },
+                    onSetShowBattery = { viewModel.setShowBattery(it) },
+                    onSetShowWeather = { viewModel.setShowWeather(it) },
+                    onSetShowCalendarEvent = { viewModel.setShowCalendarEvent(it) },
+                    onSetShowMusicHome = { viewModel.setShowMusicHome(it) },
+                    onSetShowMusicDrawer = { viewModel.setShowMusicDrawer(it) },
+                    onSetShowAlphabetIndex = { viewModel.setShowAlphabetIndex(it) },
+                    onSetWallpaperDimOverlay = { viewModel.setWallpaperDimOverlay(it) },
+                    onSetHapticsEnabled = { viewModel.setHapticsEnabled(it) },
+                    onSetHomePageCount = { viewModel.setHomePageCount(it) },
                     onOpenAutomations = { viewModel.openAutomations() },
                     onOpenAnimatedIcons = { viewModel.openAnimatedIconLibrary() },
                     onOpenContextRings = { viewModel.openContextRingDesigner() },
@@ -408,6 +473,13 @@ fun LauncherRootScreen(
                         )
                     }
                 }
+            )
+        }
+
+        // Official NovaForge Splash Screen with subtle fade-in and near-black cosmic theme
+        if (showSplash) {
+            LauncherSplashScreen(
+                onDismiss = { showSplash = false }
             )
         }
     }

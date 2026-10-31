@@ -27,6 +27,7 @@ interface SettingsScreenProps {
 
 type SettingsSubPage =
   | 'root'
+  | 'homeCustomization'
   | 'appearance'
   | 'animatedIcons'
   | 'iconDesigner'
@@ -53,11 +54,18 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
     ? 'bg-white/70 backdrop-blur-md border border-black/5'
     : 'bg-[#1C1F24]/80 backdrop-blur-md border border-white/10';
 
-  const accentColors = ['#2A9D8F', '#E76F51', '#264653', '#3B82F6', '#8B5CF6', '#10B981', '#F43F5E'];
+  const accentColors = ['#38BDF8', '#6366F1', '#2A9D8F', '#E76F51', '#264653', '#3B82F6', '#10B981'];
 
   // Root Menu
   if (subPage === 'root') {
     const menuItems = [
+      {
+        id: 'homeCustomization',
+        title: 'Home Screen & Glance',
+        desc: 'Clock style, music player, wallpaper dimming & info toggles',
+        badge: 'Redesigned',
+        action: () => setSubPage('homeCustomization')
+      },
       {
         id: 'contextRings',
         title: 'Context Rings Designer',
@@ -151,6 +159,26 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
         </div>
 
         <div className="flex-1 overflow-y-auto no-scrollbar py-2 space-y-1">
+          {/* NovaForge Official Brand Card */}
+          <div
+            onClick={() => setSubPage('about')}
+            className={`p-3.5 mb-2 rounded-2xl ${cardBg} flex items-center gap-3.5 cursor-pointer hover:border-cyan-500/30 transition shadow-sm`}
+          >
+            <img
+              src="/novaforge_logo.png"
+              alt="NovaForge Logo"
+              className="w-12 h-12 rounded-xl object-contain shadow-md border border-cyan-500/20 bg-[#07090E] shrink-0"
+            />
+            <div className="flex-1 min-w-0 text-left">
+              <div className="text-sm font-semibold truncate flex items-center gap-1.5">
+                <span>NovaForge Launcher</span>
+              </div>
+              <div className="text-[11px] text-cyan-400 font-mono">v1.2.0 Cosmic Orbit</div>
+              <div className={`text-[10px] ${subtextColor} truncate`}>Local-First • Jetpack Compose • 100% Free</div>
+            </div>
+            <ChevronRight size={16} className={subtextColor} />
+          </div>
+
           {menuItems.map((item) => (
             <div
               key={item.id}
@@ -174,6 +202,136 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
               <ChevronRight size={16} className={subtextColor} />
             </div>
           ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Home Screen & Glance Customization Subpage
+  if (subPage === 'homeCustomization') {
+    const clockStyles: Array<{ id: 'digital' | 'minimal' | 'bold' | 'serif' | 'monospace' | 'cosmic'; name: string; preview: string }> = [
+      { id: 'digital', name: 'Digital', preview: '10:24 (Clean sans-serif)' },
+      { id: 'minimal', name: 'Minimal', preview: '10:24 (Thin airy display)' },
+      { id: 'bold', name: 'Bold', preview: '10:24 (Heavy display numerals)' },
+      { id: 'serif', name: 'Serif', preview: '10:24 (Editorial serif digits)' },
+      { id: 'monospace', name: 'Monospace', preview: '10:24 (Tech glyph numerals)' },
+      { id: 'cosmic', name: 'Cosmic Orbit', preview: '10:24 (Cyan celestial accent)' }
+    ];
+
+    const currentStyle = settings.clockStyle || 'digital';
+    const currentSize = settings.clockSize || 'large';
+    const dimVal = Math.round((settings.wallpaperDimOverlay ?? 0.20) * 100);
+
+    return (
+      <div className={`h-full flex flex-col pt-8 pb-4 px-5 select-none ${textColor}`}>
+        <div className="flex items-center gap-3 pb-3 border-b border-black/5 dark:border-white/5">
+          <button
+            onClick={() => setSubPage('root')}
+            className="p-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition"
+          >
+            <ArrowLeft size={18} />
+          </button>
+          <h1 className="text-base font-semibold">Home Screen & Glance</h1>
+        </div>
+
+        <div className="flex-1 overflow-y-auto no-scrollbar py-3 space-y-4 text-left">
+          {/* Clock Typography Style */}
+          <div>
+            <label className="text-xs font-semibold block mb-2 text-neutral-300">Clock Typography Style</label>
+            <div className="space-y-1.5">
+              {clockStyles.map((style) => (
+                <div
+                  key={style.id}
+                  onClick={() => onUpdateSettings((prev) => ({ ...prev, clockStyle: style.id }))}
+                  className={`p-2.5 rounded-xl border cursor-pointer transition flex items-center justify-between ${
+                    currentStyle === style.id
+                      ? 'border-[#38BDF8] bg-[#38BDF8]/10'
+                      : 'border-white/10 bg-white/5 hover:bg-white/10'
+                  }`}
+                >
+                  <div>
+                    <span className="text-xs font-medium block">{style.name}</span>
+                    <span className="text-[10px] text-neutral-400 block">{style.preview}</span>
+                  </div>
+                  {currentStyle === style.id && <Check size={16} className="text-[#38BDF8]" />}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Clock Size */}
+          <div>
+            <label className="text-xs font-semibold block mb-2 text-neutral-300">Clock Size</label>
+            <div className="grid grid-cols-3 gap-2">
+              {(['compact', 'standard', 'large'] as const).map((size) => (
+                <button
+                  key={size}
+                  onClick={() => onUpdateSettings((prev) => ({ ...prev, clockSize: size }))}
+                  className={`py-2 text-xs rounded-xl border transition capitalize ${
+                    currentSize === size
+                      ? 'border-[#38BDF8] bg-[#38BDF8]/20 font-semibold text-[#38BDF8]'
+                      : 'border-white/10 bg-white/5 hover:bg-white/10 text-neutral-300'
+                  }`}
+                >
+                  {size}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Wallpaper Readability Dimming Overlay */}
+          <div className="p-3 rounded-2xl bg-white/5 border border-white/10">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-medium">Wallpaper Readability Scrim</span>
+              <span className="text-xs font-mono text-[#38BDF8]">{dimVal}%</span>
+            </div>
+            <p className="text-[10px] text-neutral-400 mb-2">
+              Translucent overlay for text legibility over any wallpaper without obscuring it.
+            </p>
+            <input
+              type="range"
+              min="0"
+              max="70"
+              value={dimVal}
+              onChange={(e) => {
+                const val = parseFloat(e.target.value) / 100;
+                onUpdateSettings((prev) => ({ ...prev, wallpaperDimOverlay: val }));
+              }}
+              className="w-full accent-[#38BDF8] cursor-pointer"
+            />
+          </div>
+
+          {/* Information & Glance Toggles */}
+          <div className="space-y-2">
+            <label className="text-xs font-semibold block text-neutral-300">Glance & Interface Elements</label>
+
+            {[
+              { key: 'showBattery', label: 'Battery Percentage & Status', desc: 'Display live battery in top header' },
+              { key: 'showWeather', label: 'Live Weather Glance', desc: 'Temperature and condition under clock' },
+              { key: 'showCalendarEvent', label: 'Upcoming Calendar Agenda', desc: 'Upcoming tasks or countdown under clock' },
+              { key: 'showMusicHome', label: 'Home Screen Music Widget', desc: 'Compact MediaSession player on Home' },
+              { key: 'showMusicDrawer', label: 'App Drawer Music Widget', desc: 'Compact player at top of App Drawer' },
+              { key: 'showAlphabetRail', label: 'Vertical A–Z Fast Rail', desc: 'Continuous scrub letter index on drawer' },
+              { key: 'hapticsEnabled', label: 'Haptic Feedback', desc: 'Vibrate on Context Ring selections' }
+            ].map((toggle) => {
+              const val = (settings as any)[toggle.key] ?? true;
+              return (
+                <div
+                  key={toggle.key}
+                  onClick={() => onUpdateSettings((prev) => ({ ...prev, [toggle.key]: !val }))}
+                  className="p-2.5 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between cursor-pointer hover:bg-white/10 transition"
+                >
+                  <div className="pr-2">
+                    <span className="text-xs font-medium block">{toggle.label}</span>
+                    <span className="text-[10px] text-neutral-400 block">{toggle.desc}</span>
+                  </div>
+                  <div className={`w-8 h-4 rounded-full p-0.5 transition-colors ${val ? 'bg-[#38BDF8]' : 'bg-neutral-700'}`}>
+                    <div className={`w-3 h-3 rounded-full bg-white transition-transform ${val ? 'translate-x-4' : 'translate-x-0'}`} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     );
@@ -654,18 +812,17 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
       </div>
 
       <div className="flex-1 overflow-y-auto no-scrollbar py-6 space-y-4 text-center">
-        <div
-          style={{ backgroundColor: settings.accentColor }}
-          className="w-16 h-16 rounded-3xl mx-auto flex items-center justify-center text-white shadow-lg font-bold text-2xl"
-        >
-          NF
-        </div>
+        <img
+          src="/novaforge_logo.png"
+          alt="NovaForge Official Brand Logo"
+          className="w-20 h-20 rounded-2xl mx-auto object-contain shadow-2xl border border-cyan-500/20 bg-[#07090E]"
+        />
         <div>
           <div className="text-lg font-bold">NovaForge Launcher</div>
-          <div className={`text-xs ${subtextColor}`}>Version 1.0.0 (Production Architecture)</div>
+          <div className="text-xs text-cyan-400 font-mono">v1.2.0 Cosmic Orbit Edition</div>
         </div>
         <p className={`text-xs ${subtextColor} max-w-xs mx-auto leading-relaxed`}>
-          A native Android HOME launcher crafted with Jetpack Compose, Material 3, and deep customization. Zero bloat, fast gesture navigation, and native widget hosting.
+          A native Android HOME launcher crafted with Jetpack Compose, Material 3, and deep customization. Minimalist space aesthetic, zero bloat, fast gesture navigation, real icon caching, and local-first privacy.
         </p>
 
         <button
