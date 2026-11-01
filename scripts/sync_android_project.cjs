@@ -87,19 +87,24 @@ const files = allPaths.map((filePath) => {
   } else if (relPath.includes('gradlew')) {
     description = 'Official Gradle wrapper execution script';
   } else if (relPath.endsWith('.jar')) {
-    description = 'Official Gradle wrapper binary jar';
+  } else if (relPath.includes('NovaForgeLogo.kt')) {
+    description = 'Robust memory-safe NovaForge logo with multi-tier fail-safe rendering';
+  } else if (relPath.includes('ic_novaforge_vector_logo.xml')) {
+    description = 'Official NovaForge cosmic identity vector drawable asset';
+  } else if (ext === '.png') {
+    description = `Official NovaForge image asset: ${relPath}`;
   }
 
-  const isBinary = ext === '.jar';
+  const isBinary = ext === '.jar' || ext === '.png' || ext === '.webp' || ext === '.class';
   if (isBinary) {
     const base64Content = fs.readFileSync(filePath).toString('base64');
     return {
       path: relPath,
-      category,
+      category: ext === '.png' ? 'xml' : category,
       description,
       isBinary: true,
       binaryBase64: base64Content,
-      content: `[Binary Gradle Wrapper Jar file (${(fs.statSync(filePath).size / 1024).toFixed(1)} KB)]`
+      content: `[Binary asset (${(fs.statSync(filePath).size / 1024).toFixed(1)} KB)]`
     };
   } else {
     const textContent = fs.readFileSync(filePath, 'utf8');

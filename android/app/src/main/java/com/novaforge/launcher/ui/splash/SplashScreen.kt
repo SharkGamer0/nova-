@@ -12,13 +12,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.novaforge.launcher.R
+import com.novaforge.launcher.ui.common.NovaForgeLogoImage
 import kotlinx.coroutines.delay
 
 /**
@@ -52,9 +51,8 @@ fun LauncherSplashScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                // Official NovaForge Logo
-                Image(
-                    painter = painterResource(id = R.drawable.novaforge_logo),
+                // Official NovaForge Logo (Safe Multi-Tier Loader & Procedural Fallback)
+                NovaForgeLogoImage(
                     contentDescription = "NovaForge Launcher",
                     modifier = Modifier
                         .size(110.dp)

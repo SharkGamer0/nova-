@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.ui.res.painterResource
 import com.novaforge.launcher.R
+import com.novaforge.launcher.ui.common.NovaForgeLogoImage
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -150,7 +151,8 @@ fun SettingsScreen(
                             }
                         },
                         onOpenAutomations = onOpenAutomations,
-                        onOpenAnimatedIcons = onOpenAnimatedIcons
+                        onOpenAnimatedIcons = onOpenAnimatedIcons,
+                        onOpenContextRings = onOpenContextRings
                     )
                 }
                 SettingsSubscreen.HOME_CUSTOMIZATION -> {
@@ -192,7 +194,7 @@ fun SettingsScreen(
                         currentShape = currentIconShape,
                         currentStyle = currentIconStyle,
                         onSetShape = onSetIconShape,
-                        onSetStyle = onSetStyle
+                        onSetStyle = onSetIconStyle
                     )
                 }
                 SettingsSubscreen.GESTURES -> {
@@ -248,7 +250,8 @@ private fun MainSettingsList(
     onNavigate: (SettingsSubscreen) -> Unit,
     onOpenWallpaperPicker: () -> Unit,
     onOpenAutomations: () -> Unit,
-    onOpenAnimatedIcons: () -> Unit
+    onOpenAnimatedIcons: () -> Unit,
+    onOpenContextRings: () -> Unit = {}
 ) {
     LazyColumn(
         modifier = Modifier
@@ -270,8 +273,7 @@ private fun MainSettingsList(
                         .padding(14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.novaforge_logo),
+                    NovaForgeLogoImage(
                         contentDescription = "NovaForge Launcher Logo",
                         modifier = Modifier
                             .size(52.dp)

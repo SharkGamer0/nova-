@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Deep space background card -->
+    <path
+        android:fillColor="#070A12"
+        android:pathData="M20,8 C13.4,8 8,13.4 8,20 L8,88 C8,94.6 13.4,100 20,100 L88,100 C94.6,100 100,94.6 100,88 L100,20 C100,13.4 94.6,8 88,8 Z" />
+    <!-- Planetary horizon glow arc -->
+    <path
+        android:strokeColor="#0284C7"
+        android:strokeWidth="1.5"
+        android:pathData="M16,92 C32,84 76,84 92,92" />
+    <!-- Celestial Orbit Ring -->
+    <path
+        android:strokeColor="#38BDF8"
+        android:strokeWidth="2.2"
+        android:pathData="M22,60 C22,54 42,42 68,44 C82,45 90,50 88,56 C86,63 68,72 44,70 C28,69 22,65 22,60 Z" />
+    <!-- Stylized 'N' icon -->
+    <path
+        android:fillColor="#F8FAFC"
+        android:pathData="M38,34 L44,34 L44,60 L62,37 L68,37 L68,72 L62,72 L62,46 L44,69 L38,69 Z" />
+    <!-- 4-point orbital star -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M76,30 L77.5,35 L82.5,36.5 L77.5,38 L76,43 L74.5,38 L69.5,36.5 L74.5,35 Z" />
+</vector>

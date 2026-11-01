@@ -276,9 +276,9 @@ fun RenderFallbackGlyph(label: String, size: Dp) {
 fun RenderProceduralAnimation(
     format: AnimationFormat,
     animationId: String,
-    speed: Float,
-    size: Dp,
-    isPlaying: Boolean
+    speed: Float = 1.0f,
+    size: Dp = 38.dp,
+    isPlaying: Boolean = true
 ) {
     val transition = rememberInfiniteTransition(label = "ProceduralAnim_$animationId")
     val duration = (1200 / speed.coerceIn(0.5f, 3.0f)).toInt()

@@ -36,7 +36,7 @@ import com.novaforge.launcher.ui.home.CompactMusicWidget
 import kotlinx.coroutines.launch
 import java.util.SortedMap
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun AppListScreen(
     appsGrouped: SortedMap<Char, List<AppItem>>,

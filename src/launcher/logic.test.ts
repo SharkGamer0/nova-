@@ -173,6 +173,10 @@ test('Android project contains all critical source files and resources', async (
 
   assert.ok(filePaths.has('app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml'), 'Missing ic_launcher.xml');
   assert.ok(filePaths.has('app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml'), 'Missing ic_launcher_round.xml');
+  assert.ok(filePaths.has('app/src/main/java/com/novaforge/launcher/ui/common/NovaForgeLogo.kt'), 'Missing NovaForgeLogo.kt');
+  assert.ok(filePaths.has('app/src/main/res/drawable/ic_novaforge_vector_logo.xml'), 'Missing ic_novaforge_vector_logo.xml');
+  assert.ok(filePaths.has('app/src/main/res/drawable-nodpi/novaforge_logo.png'), 'Missing drawable-nodpi/novaforge_logo.png');
+  assert.ok(filePaths.has('app/src/main/res/drawable-xxxhdpi/novaforge_logo.png'), 'Missing drawable-xxxhdpi/novaforge_logo.png');
   assert.ok(filePaths.has('app/proguard-rules.pro'), 'Missing proguard-rules.pro');
 
   // Wrapper files
