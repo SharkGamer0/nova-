@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Lock, ArrowLeft, Eye, EyeOff } from './Icons';
+import { resolveIsDark, getSemanticColors } from '../launcher/theme';
+import { LauncherTheme } from '../launcher/types';
 
 interface PinLockModalProps {
   correctPin: string;
@@ -17,12 +19,14 @@ export const PinLockModal: React.FC<PinLockModalProps> = ({
   const [pin, setPin] = useState('');
   const [error, setError] = useState(false);
 
-  const isLight = theme === 'warm-light';
-  const textColor = isLight ? 'text-[#242725]' : 'text-[#F1F3F4]';
-  const subtextColor = isLight ? 'text-[#5A605B]' : 'text-[#A0A8B0]';
-  const keypadBg = isLight
-    ? 'bg-black/5 hover:bg-black/10 active:bg-black/15'
-    : 'bg-white/5 hover:bg-white/10 active:bg-white/15';
+  const isDark = resolveIsDark(theme as LauncherTheme);
+  const colors = getSemanticColors(theme as LauncherTheme);
+  const textColor = isDark ? 'text-[#F8FAFC]' : 'text-[#1E293B]';
+  const subtextColor = isDark ? 'text-[#94A3B8]' : 'text-[#475569]';
+  const modalBg = isDark ? 'bg-[#07090E]' : 'bg-[#F8F9FA]';
+  const keypadBg = isDark
+    ? 'bg-white/10 hover:bg-white/15 active:bg-white/20 text-[#F8FAFC]'
+    : 'bg-black/5 hover:bg-black/10 active:bg-black/15 text-[#1E293B] border border-black/5';
 
   const handleDigit = (digit: string) => {
     if (pin.length >= 4) return;
@@ -46,12 +50,12 @@ export const PinLockModal: React.FC<PinLockModalProps> = ({
   };
 
   return (
-    <div className={`absolute inset-0 z-50 bg-[#F7F6F2] dark:bg-[#121417] flex flex-col justify-between pt-10 pb-8 px-6 select-none ${textColor} animate-in fade-in zoom-in-95`}>
+    <div className={`absolute inset-0 z-50 ${modalBg} flex flex-col justify-between pt-10 pb-8 px-6 select-none ${textColor} animate-in fade-in zoom-in-95`}>
       {/* Top Bar */}
       <div className="flex items-center justify-between">
         <button
           onClick={onCancel}
-          className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition"
+          className="p-2 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition"
           title="Back"
         >
           <ArrowLeft size={20} />

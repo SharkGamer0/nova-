@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AppItem, AgendaItem, LauncherSettings } from '../launcher/types';
+import { resolveIsDark, getSemanticColors } from '../launcher/theme';
 import { AppIcon, Plus, Play, Pause, SkipForward, SkipBack, Search, Sun, Check, Sparkles } from './Icons';
 
 interface HomeScreenProps {
@@ -59,12 +60,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     return () => clearInterval(interval);
   }, []);
 
-  const isLight = settings.theme === 'warm-light';
-  const textColor = isLight ? 'text-[#242725]' : 'text-[#F1F3F4]';
-  const subtextColor = isLight ? 'text-[#5A605B]' : 'text-[#94A3B8]';
+  const isDark = resolveIsDark(settings.theme);
+  const isLight = !isDark;
+  const colors = getSemanticColors(settings.theme, settings.accentColor);
+  const textColor = isLight ? 'text-slate-800' : 'text-slate-100';
+  const subtextColor = isLight ? 'text-slate-600' : 'text-slate-400';
   const cardBg = isLight
-    ? 'bg-white/60 backdrop-blur-md border border-black/5 shadow-xs'
-    : 'bg-[#0D1117]/60 backdrop-blur-md border border-white/10 shadow-sm';
+    ? 'bg-white/85 backdrop-blur-md border border-black/8 shadow-xs'
+    : 'bg-[#0D1117]/80 backdrop-blur-md border border-white/10 shadow-sm';
 
   const clockStyle = settings.clockStyle || 'digital';
   const clockSize = settings.clockSize || 'large';
@@ -100,20 +103,24 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     if (clockSize === 'standard') sizeClass = 'text-6xl';
     if (clockSize === 'large') sizeClass = 'text-7xl';
 
+    const shadow = isDark
+      ? 'drop-shadow-[0_2px_12px_rgba(0,0,0,0.7)] text-white'
+      : 'drop-shadow-[0_1px_4px_rgba(255,255,255,0.9)] text-slate-900';
+
     switch (clockStyle) {
       case 'minimal':
-        return `${sizeClass} font-thin tracking-widest font-sans`;
+        return `${sizeClass} ${shadow} font-thin tracking-widest font-sans`;
       case 'bold':
-        return `${sizeClass} font-black tracking-tighter font-sans`;
+        return `${sizeClass} ${shadow} font-black tracking-tighter font-sans`;
       case 'serif':
-        return `${sizeClass} font-light italic font-serif tracking-normal`;
+        return `${sizeClass} ${shadow} font-light italic font-serif tracking-normal`;
       case 'monospace':
-        return `${sizeClass} font-normal font-mono tracking-tight`;
+        return `${sizeClass} ${shadow} font-normal font-mono tracking-tight`;
       case 'cosmic':
-        return `${sizeClass} font-extralight tracking-widest text-[#38BDF8] drop-shadow-[0_0_12px_rgba(56,189,248,0.35)]`;
+        return `${sizeClass} font-extralight tracking-widest text-[#38BDF8] drop-shadow-[0_0_14px_rgba(56,189,248,0.45)]`;
       case 'digital':
       default:
-        return `${sizeClass} font-extralight tracking-tight font-sans`;
+        return `${sizeClass} ${shadow} font-extralight tracking-tight font-sans`;
     }
   };
 
@@ -128,9 +135,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             onOpenContextRing(e.clientX - rect.left, e.clientY - rect.top);
           }
         }
-      }}
-      style={{
-        backgroundColor: `rgba(7, 9, 14, ${dimOverlayAlpha})`
       }}
       className={`relative h-full flex flex-col justify-between px-5 pt-5 pb-3 select-none transition-colors duration-300 ${textColor}`}
     >
@@ -149,10 +153,14 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                     onSwitchWorkspace(ws.id);
                   }
                 }}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs transition-all ${
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs transition-all backdrop-blur-md ${
                   isCurrent
-                    ? 'bg-white/15 dark:bg-white/20 font-medium text-white shadow-xs'
-                    : 'text-neutral-400 hover:text-white hover:bg-white/5'
+                    ? isDark
+                      ? 'bg-white/20 font-semibold text-white shadow-xs border border-white/20'
+                      : 'bg-white/85 font-semibold text-slate-900 shadow-xs border border-black/10'
+                    : isDark
+                    ? 'text-slate-300 hover:text-white bg-black/30 hover:bg-white/10 border border-white/10'
+                    : 'text-slate-700 hover:text-slate-900 bg-white/50 hover:bg-white/80 border border-black/8'
                 }`}
               >
                 <div
@@ -166,10 +174,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         </div>
 
         {showBattery && (
-          <div className="flex items-center gap-1.5 text-xs text-neutral-300 shrink-0 font-mono bg-white/10 px-2 py-0.5 rounded-full">
-            <span className="text-[11px]">88%</span>
+          <div className={`flex items-center gap-1.5 text-xs shrink-0 font-mono px-2 py-0.5 rounded-full backdrop-blur-md ${
+            isDark ? 'text-slate-200 bg-black/30 border border-white/10' : 'text-slate-800 bg-white/70 border border-black/8 shadow-2xs'
+          }`}>
+            <span className="text-[11px] font-semibold">88%</span>
             <div className="w-4 h-2 border border-current rounded-xs p-[1px] flex items-center">
-              <div className="h-full bg-emerald-400 w-3/4 rounded-2xs" />
+              <div className="h-full bg-emerald-500 w-3/4 rounded-2xs" />
             </div>
           </div>
         )}
@@ -187,21 +197,21 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               <Sparkles size={18} className="text-[#38BDF8] animate-pulse" />
             )}
           </div>
-          <div className="text-sm font-normal mt-2 tracking-wide opacity-85">
+          <div className={`text-sm font-medium mt-2 tracking-wide ${isDark ? 'text-slate-200 drop-shadow-[0_1px_4px_rgba(0,0,0,0.7)]' : 'text-slate-800 drop-shadow-[0_1px_3px_rgba(255,255,255,0.8)]'}`}>
             {currentDate}
           </div>
 
-          <div className="flex items-center gap-3 mt-1.5 text-xs">
+          <div className="flex items-center gap-2.5 mt-2 text-xs flex-wrap">
             {showWeather && (
-              <div className="flex items-center gap-1.5">
-                <Sun size={14} className="text-amber-400 shrink-0 fill-amber-400/20" />
-                <span className="font-medium">24°C</span>
-                <span className={subtextColor}>Clear Sky</span>
+              <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full backdrop-blur-md ${isDark ? 'bg-black/30 text-slate-200 border border-white/10' : 'bg-white/70 text-slate-800 border border-black/8 shadow-2xs'}`}>
+                <Sun size={13} className="text-amber-400 shrink-0 fill-amber-400/20" />
+                <span className="font-semibold">24°C</span>
+                <span className={isDark ? 'text-slate-300' : 'text-slate-600'}>Clear Sky</span>
               </div>
             )}
             {showCalendarEvent && agenda.length > 0 && (
-              <div className="flex items-center gap-1.5 truncate text-neutral-300">
-                <span className="w-1 h-1 rounded-full bg-[#38BDF8]" />
+              <div className={`flex items-center gap-1.5 truncate px-2.5 py-1 rounded-full backdrop-blur-md ${isDark ? 'bg-black/30 text-slate-200 border border-white/10' : 'bg-white/70 text-slate-800 border border-black/8 shadow-2xs'}`}>
+                <span className="w-1.5 h-1.5 rounded-full bg-[#38BDF8]" />
                 <span className="truncate">{agenda[0].title} ({agenda[0].time})</span>
               </div>
             )}
@@ -235,7 +245,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
               <div className="flex items-center gap-1.5 shrink-0">
                 <button
-                  className="p-1 hover:opacity-75 transition text-neutral-300"
+                  className={`p-1 hover:opacity-75 transition ${isDark ? 'text-slate-300' : 'text-slate-600'}`}
                   title="Previous"
                 >
                   <SkipBack size={14} />
@@ -249,7 +259,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                   {isPlaying ? <Pause size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" className="ml-0.5" />}
                 </button>
                 <button
-                  className="p-1 hover:opacity-75 transition text-neutral-300"
+                  className={`p-1 hover:opacity-75 transition ${isDark ? 'text-slate-300' : 'text-slate-600'}`}
                   title="Next"
                 >
                   <SkipForward size={14} />
@@ -258,9 +268,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             </div>
 
             {isMusicExpanded && (
-              <div className="mt-2.5 pt-2 border-t border-white/10 flex items-center justify-between text-[10px] text-neutral-400">
+              <div className={`mt-2.5 pt-2 border-t flex items-center justify-between text-[10px] ${isDark ? 'border-white/10 text-slate-400' : 'border-black/10 text-slate-500'}`}>
                 <span>Active MediaSession (Spotify)</span>
-                <span className="text-[#38BDF8] cursor-pointer" onClick={() => setIsMusicExpanded(false)}>
+                <span className="text-[#38BDF8] cursor-pointer font-medium" onClick={() => setIsMusicExpanded(false)}>
                   Collapse
                 </span>
               </div>
@@ -272,10 +282,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         {showCalendarEvent && (
           <div className={`mt-3 p-3 rounded-2xl ${cardBg} transition-all`}>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-semibold uppercase tracking-wider opacity-75">Today's Schedule</span>
+              <span className={`text-[11px] font-semibold uppercase tracking-wider ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Today's Schedule</span>
               <button
                 onClick={() => setShowAddAgenda(!showAddAgenda)}
-                className="p-1 rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-xs flex items-center gap-1 transition text-neutral-300"
+                className={`p-1 rounded-full transition text-xs flex items-center gap-1 ${isDark ? 'hover:bg-white/10 text-slate-300' : 'hover:bg-black/5 text-slate-600'}`}
                 title="Add task"
               >
                 <Plus size={14} />
@@ -283,13 +293,17 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             </div>
 
             {showAddAgenda && (
-              <form onSubmit={handleCreateAgenda} className="mb-2.5 p-2 bg-black/5 dark:bg-white/5 rounded-xl space-y-2">
+              <form onSubmit={handleCreateAgenda} className={`mb-2.5 p-2 rounded-xl space-y-2 ${isDark ? 'bg-white/5 border border-white/10' : 'bg-black/5 border border-black/10'}`}>
                 <input
                   type="text"
                   placeholder="Task title..."
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  className="w-full text-xs px-2 py-1.5 rounded-lg bg-white dark:bg-neutral-800 border border-black/10 dark:border-white/10 outline-none text-white"
+                  className={`w-full text-xs px-2 py-1.5 rounded-lg border outline-none ${
+                    isDark
+                      ? 'bg-neutral-900 border-white/15 text-white placeholder:text-neutral-500'
+                      : 'bg-white border-black/15 text-slate-900 placeholder:text-slate-400'
+                  }`}
                   autoFocus
                 />
                 <div className="flex gap-2">
@@ -298,12 +312,16 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                     placeholder="Time (e.g. 2:00 PM)"
                     value={newTime}
                     onChange={(e) => setNewTime(e.target.value)}
-                    className="w-1/2 text-xs px-2 py-1 rounded-lg bg-white dark:bg-neutral-800 border border-black/10 dark:border-white/10 outline-none text-white"
+                    className={`w-1/2 text-xs px-2 py-1 rounded-lg border outline-none ${
+                      isDark
+                        ? 'bg-neutral-900 border-white/15 text-white placeholder:text-neutral-500'
+                        : 'bg-white border-black/15 text-slate-900 placeholder:text-slate-400'
+                    }`}
                   />
                   <button
                     type="submit"
                     style={{ backgroundColor: settings.accentColor || '#38BDF8' }}
-                    className="w-1/2 text-xs text-white rounded-lg font-medium py-1"
+                    className="w-1/2 text-xs text-white rounded-lg font-medium py-1 shadow-xs hover:opacity-90 transition"
                   >
                     Save
                   </button>
@@ -339,7 +357,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
         {/* Favorite Applications List (Gesture-enabled) */}
         <div className="mt-3.5 space-y-1 pb-16">
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 px-1 mb-1">
+          <div className={`text-[10px] font-semibold uppercase tracking-wider px-1 mb-1 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
             Pinned Essentials
           </div>
           {favorites.map((app) => (
@@ -356,7 +374,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                   onAppLongPress(app);
                 }
               }}
-              className="flex items-center gap-3.5 py-1.5 px-2 rounded-xl hover:bg-white/5 cursor-pointer transition group"
+              className={`flex items-center gap-3.5 py-1.5 px-2 rounded-xl cursor-pointer transition group ${
+                isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'
+              }`}
             >
               <AppIcon
                 name={app.iconName}
@@ -367,7 +387,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                 accentColor={settings.accentColor}
                 size="md"
               />
-              <span className="text-sm font-normal tracking-tight text-left flex-1">
+              <span className={`text-sm font-medium tracking-tight text-left flex-1 ${isDark ? 'text-slate-100 drop-shadow-[0_1px_3px_rgba(0,0,0,0.85)]' : 'text-slate-900 drop-shadow-[0_1px_2px_rgba(255,255,255,0.9)]'}`}>
                 {app.name}
               </span>
             </div>
@@ -376,18 +396,20 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           {/* Social Stack capsule */}
           <div
             onClick={onOpenSocialFolder}
-            className="flex items-center gap-3.5 py-1.5 px-2 rounded-xl hover:bg-white/5 cursor-pointer transition border border-dashed border-white/10 mt-1"
+            className={`flex items-center gap-3.5 py-1.5 px-2 rounded-xl cursor-pointer transition border border-dashed mt-1 backdrop-blur-xs ${
+              isDark ? 'hover:bg-white/10 border-white/20 bg-black/20' : 'hover:bg-white/90 border-black/20 bg-white/40'
+            }`}
           >
-            <div className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center shrink-0">
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${isDark ? 'bg-white/5' : 'bg-black/5'}`}>
               <div className="grid grid-cols-2 gap-1 p-1.5">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                <div className="w-1.5 h-1.5 rounded-full bg-pink-400" />
-                <div className="w-1.5 h-1.5 rounded-full bg-sky-400" />
-                <div className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                <div className="w-1.5 h-1.5 rounded-full bg-pink-500" />
+                <div className="w-1.5 h-1.5 rounded-full bg-sky-500" />
+                <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
               </div>
             </div>
             <div className="text-left flex-1">
-              <span className="text-xs font-medium block">Social Orbit</span>
+              <span className={`text-xs font-medium block ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>Social Orbit</span>
               <span className={`text-[10px] ${subtextColor}`}>4 grouped apps</span>
             </div>
           </div>
@@ -401,7 +423,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             <button
               key={letter}
               onClick={() => onLetterJump(letter)}
-              className="hover:font-bold hover:scale-125 transition px-1 py-0.5 text-neutral-400 hover:text-white"
+              className={`hover:font-bold hover:scale-125 transition px-1 py-0.5 ${
+                isDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'
+              }`}
             >
               {letter}
             </button>
@@ -409,17 +433,23 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         </div>
       )}
 
-      {/* Compact Bottom Command Bar (Replaces floating action buttons) */}
+      {/* Compact Bottom Command Bar */}
       <div className="relative pt-2">
         <button
           onClick={onOpenSearch}
-          className="w-full h-11 px-4 rounded-2xl bg-white/10 hover:bg-white/15 active:scale-[0.99] border border-white/10 flex items-center justify-between transition-all backdrop-blur-md text-neutral-300"
+          className={`w-full h-11 px-4 rounded-2xl flex items-center justify-between transition-all backdrop-blur-md border ${
+            isDark
+              ? 'bg-white/10 hover:bg-white/15 border-white/12 text-slate-200'
+              : 'bg-white/90 hover:bg-white border-black/10 text-slate-800 shadow-xs'
+          }`}
         >
           <div className="flex items-center gap-2.5">
             <Search size={16} style={{ color: settings.accentColor || '#38BDF8' }} />
-            <span className="text-xs text-neutral-400">Search apps or type /command...</span>
+            <span className={`text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Search apps or type /command...</span>
           </div>
-          <div className="text-[10px] font-mono text-neutral-400 bg-white/10 px-2 py-0.5 rounded-md">
+          <div className={`text-[10px] font-mono px-2 py-0.5 rounded-md ${
+            isDark ? 'text-slate-300 bg-white/10' : 'text-slate-600 bg-black/5'
+          }`}>
             /
           </div>
         </button>

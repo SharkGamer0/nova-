@@ -272,3 +272,31 @@ test('canNavigateNestedRing protects against circular references and max depth',
   assert.equal(canNavigateNestedRing('ring1', ['root', 'ring1']), false);
 });
 
+test('Semantic theme system correctly resolves light and dark modes with high-contrast tokens', async () => {
+  const { resolveIsDark, getSemanticColors } = await import('./theme');
+
+  // Explicit modes
+  assert.equal(resolveIsDark('dark'), true);
+  assert.equal(resolveIsDark('charcoal-dark'), true);
+  assert.equal(resolveIsDark('monochrome'), true);
+  assert.equal(resolveIsDark('light'), false);
+  assert.equal(resolveIsDark('warm-light'), false);
+
+  // Dark tokens
+  const darkColors = getSemanticColors('dark', '#38BDF8');
+  assert.equal(darkColors.isDark, true);
+  assert.equal(darkColors.textPrimary, '#F8FAFC');
+  assert.equal(darkColors.bgPrimary, '#07090E');
+  assert.equal(darkColors.textSecondary, '#94A3B8');
+  assert.ok(darkColors.borderPrimary.includes('255, 255, 255'));
+
+  // Light tokens
+  const lightColors = getSemanticColors('light', '#38BDF8');
+  assert.equal(lightColors.isDark, false);
+  assert.equal(lightColors.textPrimary, '#1E293B');
+  assert.equal(lightColors.bgPrimary, '#F8F9FA');
+  assert.equal(lightColors.textSecondary, '#475569');
+  assert.ok(lightColors.borderPrimary.includes('0, 0, 0'));
+  assert.equal(lightColors.tabSelectedBg, '#38BDF8');
+});
+

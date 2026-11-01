@@ -1,6 +1,7 @@
 import React from 'react';
 import { AppItem, LauncherSettings } from '../launcher/types';
 import { AppIcon, Pin, Trash2, EyeOff, Smartphone } from './Icons';
+import { resolveIsDark, getSemanticColors } from '../launcher/theme';
 
 interface AppActionModalProps {
   app: AppItem;
@@ -22,11 +23,12 @@ export const AppActionModal: React.FC<AppActionModalProps> = ({
   const [showInfo, setShowInfo] = React.useState(false);
   const [showUninstallConfirm, setShowUninstallConfirm] = React.useState(false);
 
-  const isLight = settings.theme === 'warm-light';
-  const textColor = isLight ? 'text-[#242725]' : 'text-[#F1F3F4]';
-  const modalBg = isLight
-    ? 'bg-[#FFFFFF] border-t border-black/10'
-    : 'bg-[#1C1F24] border-t border-white/10';
+  const isDark = resolveIsDark(settings.theme);
+  const colors = getSemanticColors(settings.theme, settings.accentColor);
+  const textColor = isDark ? 'text-[#F8FAFC]' : 'text-[#1E293B]';
+  const modalBg = isDark
+    ? 'bg-[#151B26] border-t border-white/10'
+    : 'bg-[#FFFFFF] border-t border-black/10 shadow-2xl';
 
   return (
     <div

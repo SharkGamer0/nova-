@@ -97,7 +97,7 @@ class LauncherPreferences(private val context: Context) {
     }
 
     val wallpaperDimOverlay: Flow<Float> = context.dataStore.data.map { prefs ->
-        prefs[WALLPAPER_DIM_OVERLAY] ?: 0.20f
+        prefs[WALLPAPER_DIM_OVERLAY] ?: 0.0f
     }
 
     val hapticsEnabled: Flow<Boolean> = context.dataStore.data.map { prefs ->
@@ -167,11 +167,11 @@ class LauncherPreferences(private val context: Context) {
     }
 
     val themeMode: Flow<String> = context.dataStore.data.map { prefs ->
-        prefs[THEME_MODE] ?: "warm-light"
+        prefs[THEME_MODE] ?: "system"
     }
 
     val accentColor: Flow<String> = context.dataStore.data.map { prefs ->
-        prefs[ACCENT_COLOR] ?: "#2A9D8F"
+        prefs[ACCENT_COLOR] ?: "#38BDF8"
     }
 
     val iconShape: Flow<String> = context.dataStore.data.map { prefs ->

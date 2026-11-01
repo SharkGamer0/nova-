@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { LauncherSettings, NoteItem } from '../launcher/types';
+import { resolveIsDark, getSemanticColors } from '../launcher/theme';
 import { Play, Pause, SkipBack, SkipForward, Plus, Check, Sun } from './Icons';
 
 interface WidgetsScreenProps {
@@ -20,12 +21,14 @@ export const WidgetsScreen: React.FC<WidgetsScreenProps> = ({
   const [showAddNote, setShowAddNote] = useState(false);
   const [newNoteText, setNewNoteText] = useState('');
 
-  const isLight = settings.theme === 'warm-light';
-  const textColor = isLight ? 'text-[#242725]' : 'text-[#F1F3F4]';
-  const subtextColor = isLight ? 'text-[#5A605B]' : 'text-[#A0A8B0]';
+  const isDark = resolveIsDark(settings.theme);
+  const isLight = !isDark;
+  const colors = getSemanticColors(settings.theme, settings.accentColor);
+  const textColor = isLight ? 'text-slate-800' : 'text-slate-100';
+  const subtextColor = isLight ? 'text-slate-600' : 'text-slate-400';
   const cardBg = isLight
-    ? 'bg-white/75 backdrop-blur-md border border-black/5 shadow-xs'
-    : 'bg-[#1C1F24]/80 backdrop-blur-md border border-white/10 shadow-md';
+    ? 'bg-white/85 backdrop-blur-md border border-black/8 shadow-xs'
+    : 'bg-[#151B26]/85 backdrop-blur-md border border-white/10 shadow-sm';
 
   const handleAddNote = (e: React.FormEvent) => {
     e.preventDefault();
@@ -212,7 +215,11 @@ export const WidgetsScreen: React.FC<WidgetsScreenProps> = ({
                   placeholder="New note..."
                   value={newNoteText}
                   onChange={(e) => setNewNoteText(e.target.value)}
-                  className="w-full text-xs p-1 rounded bg-black/5 dark:bg-white/10 outline-none border border-black/10 dark:border-white/10"
+                  className={`w-full text-xs p-1.5 rounded-lg outline-none border ${
+                    isDark
+                      ? 'bg-neutral-900 border-white/15 text-white placeholder:text-neutral-500'
+                      : 'bg-white border-black/15 text-slate-900 placeholder:text-slate-400'
+                  }`}
                   autoFocus
                 />
               </form>
@@ -229,7 +236,7 @@ export const WidgetsScreen: React.FC<WidgetsScreenProps> = ({
                     className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-all ${
                       note.completed
                         ? 'bg-emerald-500 border-emerald-500 text-white'
-                        : 'border-black/30 dark:border-white/30'
+                        : isDark ? 'border-white/30' : 'border-black/30'
                     }`}
                   >
                     {note.completed && <Check size={10} strokeWidth={3} />}
@@ -261,13 +268,13 @@ export const WidgetsScreen: React.FC<WidgetsScreenProps> = ({
 
       {/* Page Indicator Dots */}
       <div className="flex items-center justify-center gap-2 pt-3 shrink-0">
-        <div className="w-1.5 h-1.5 rounded-full bg-black/20 dark:bg-white/20" />
-        <div className="w-1.5 h-1.5 rounded-full bg-black/20 dark:bg-white/20" />
+        <div className={`w-1.5 h-1.5 rounded-full ${isDark ? 'bg-white/20' : 'bg-black/20'}`} />
+        <div className={`w-1.5 h-1.5 rounded-full ${isDark ? 'bg-white/20' : 'bg-black/20'}`} />
         <div
           style={{ backgroundColor: settings.accentColor }}
           className="w-4 h-1.5 rounded-full shadow-xs"
         />
-        <div className="w-1.5 h-1.5 rounded-full bg-black/20 dark:bg-white/20" />
+        <div className={`w-1.5 h-1.5 rounded-full ${isDark ? 'bg-white/20' : 'bg-black/20'}`} />
       </div>
     </div>
   );

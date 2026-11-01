@@ -34,7 +34,51 @@ import {
 } from './components/Icons';
 
 export default function App() {
-  const [settings, setSettings] = useState<LauncherSettings>(INITIAL_SETTINGS);
+  const [settings, setSettings] = useState<LauncherSettings>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('novaforge_launcher_settings');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          return {
+            ...INITIAL_SETTINGS,
+            ...parsed,
+            wallpaperDimOverlay: parsed.wallpaperDimOverlay ?? 0
+          };
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+    return INITIAL_SETTINGS;
+  });
+
+  // Track system preference change for re-renders when theme === 'system'
+  const [systemIsDark, setSystemIsDark] = useState<boolean>(() => {
+    if (typeof window !== 'undefined' && window.matchMedia) {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    return true;
+  });
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    const handler = (e: MediaQueryListEvent) => {
+      setSystemIsDark(e.matches);
+    };
+    media.addEventListener('change', handler);
+    return () => media.removeEventListener('change', handler);
+  }, []);
+
+  React.useEffect(() => {
+    try {
+      localStorage.setItem('novaforge_launcher_settings', JSON.stringify(settings));
+    } catch (e) {
+      // ignore
+    }
+  }, [settings]);
+
   const [apps, setApps] = useState<AppItem[]>(INITIAL_APPS);
   const [agenda, setAgenda] = useState<AgendaItem[]>(INITIAL_AGENDA);
   const [notes, setNotes] = useState<NoteItem[]>(INITIAL_NOTES);
@@ -318,7 +362,58 @@ export default function App() {
         </div>
 
         {/* Action Controls */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
+          {/* Theme Quick Switcher Pill */}
+          <div className="flex items-center bg-black/40 p-1 rounded-2xl border border-white/10 text-xs">
+            <button
+              onClick={() => {
+                setSettings((prev) => ({ ...prev, theme: 'system' }));
+                triggerToast('Theme: Follow System');
+              }}
+              className={`p-1.5 px-2.5 rounded-xl font-medium flex items-center gap-1.5 transition ${
+                settings.theme === 'system'
+                  ? 'bg-[#38BDF8] text-white shadow-xs font-semibold'
+                  : 'text-neutral-400 hover:text-white'
+              }`}
+              title="Theme: Follow System"
+            >
+              <Smartphone size={13} />
+              <span className="hidden lg:inline text-[11px]">System</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setSettings((prev) => ({ ...prev, theme: 'light' }));
+                triggerToast('Theme: Light Mode');
+              }}
+              className={`p-1.5 px-2.5 rounded-xl font-medium flex items-center gap-1.5 transition ${
+                settings.theme === 'light' || settings.theme === 'warm-light'
+                  ? 'bg-[#38BDF8] text-white shadow-xs font-semibold'
+                  : 'text-neutral-400 hover:text-white'
+              }`}
+              title="Theme: Light Mode"
+            >
+              <Sun size={13} />
+              <span className="hidden lg:inline text-[11px]">Light</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setSettings((prev) => ({ ...prev, theme: 'dark' }));
+                triggerToast('Theme: Dark Mode');
+              }}
+              className={`p-1.5 px-2.5 rounded-xl font-medium flex items-center gap-1.5 transition ${
+                settings.theme === 'dark' || settings.theme === 'charcoal-dark' || settings.theme === 'monochrome'
+                  ? 'bg-[#38BDF8] text-white shadow-xs font-semibold'
+                  : 'text-neutral-400 hover:text-white'
+              }`}
+              title="Theme: Dark Mode"
+            >
+              <Moon size={13} />
+              <span className="hidden lg:inline text-[11px]">Dark</span>
+            </button>
+          </div>
+
           {/* Focus Mode Quick Pill */}
           <button
             onClick={() => {

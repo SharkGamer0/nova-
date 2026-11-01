@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { GestureAction, GestureType, IconShape, IconStyle, LauncherSettings, LauncherTheme } from '../launcher/types';
+import { resolveIsDark, getSemanticColors } from '../launcher/theme';
 import {
   ArrowLeft,
   ChevronRight,
@@ -46,13 +47,18 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 }) => {
   const [subPage, setSubPage] = useState<SettingsSubPage>('root');
 
-  const isLight = settings.theme === 'warm-light';
-  const textColor = isLight ? 'text-[#242725]' : 'text-[#F1F3F4]';
-  const subtextColor = isLight ? 'text-[#5A605B]' : 'text-[#A0A8B0]';
-  const itemHover = isLight ? 'hover:bg-black/5' : 'hover:bg-white/5';
-  const cardBg = isLight
-    ? 'bg-white/70 backdrop-blur-md border border-black/5'
-    : 'bg-[#1C1F24]/80 backdrop-blur-md border border-white/10';
+  const isDark = resolveIsDark(settings.theme);
+  const colors = getSemanticColors(settings.theme, settings.accentColor);
+  const textColor = isDark ? 'text-[#F8FAFC]' : 'text-[#1E293B]';
+  const subtextColor = isDark ? 'text-[#94A3B8]' : 'text-[#475569]';
+  const labelColor = isDark ? 'text-[#CBD5E1]' : 'text-[#334155]';
+  const itemHover = isDark ? 'hover:bg-white/5' : 'hover:bg-black/5';
+  const itemBorder = isDark ? 'border-white/10' : 'border-black/10';
+  const itemBg = isDark ? 'bg-white/5' : 'bg-black/[0.03]';
+  const itemBgHover = isDark ? 'hover:bg-white/10' : 'hover:bg-black/[0.06]';
+  const cardBg = isDark
+    ? 'bg-[#151B26]/85 backdrop-blur-md border border-white/10'
+    : 'bg-white/90 backdrop-blur-md border border-black/10 shadow-xs';
 
   const accentColors = ['#38BDF8', '#6366F1', '#2A9D8F', '#E76F51', '#264653', '#3B82F6', '#10B981'];
 
@@ -220,14 +226,14 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
     const currentStyle = settings.clockStyle || 'digital';
     const currentSize = settings.clockSize || 'large';
-    const dimVal = Math.round((settings.wallpaperDimOverlay ?? 0.20) * 100);
+    const dimVal = Math.round((settings.wallpaperDimOverlay ?? 0) * 100);
 
     return (
       <div className={`h-full flex flex-col pt-8 pb-4 px-5 select-none ${textColor}`}>
         <div className="flex items-center gap-3 pb-3 border-b border-black/5 dark:border-white/5">
           <button
             onClick={() => setSubPage('root')}
-            className="p-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition"
+            className={`p-1.5 rounded-full ${itemHover} transition`}
           >
             <ArrowLeft size={18} />
           </button>
@@ -237,7 +243,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
         <div className="flex-1 overflow-y-auto no-scrollbar py-3 space-y-4 text-left">
           {/* Clock Typography Style */}
           <div>
-            <label className="text-xs font-semibold block mb-2 text-neutral-300">Clock Typography Style</label>
+            <label className={`text-xs font-semibold block mb-2 ${labelColor}`}>Clock Typography Style</label>
             <div className="space-y-1.5">
               {clockStyles.map((style) => (
                 <div
@@ -245,13 +251,13 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                   onClick={() => onUpdateSettings((prev) => ({ ...prev, clockStyle: style.id }))}
                   className={`p-2.5 rounded-xl border cursor-pointer transition flex items-center justify-between ${
                     currentStyle === style.id
-                      ? 'border-[#38BDF8] bg-[#38BDF8]/10'
-                      : 'border-white/10 bg-white/5 hover:bg-white/10'
+                      ? 'border-[#38BDF8] bg-[#38BDF8]/15 font-medium'
+                      : `${itemBorder} ${itemBg} ${itemBgHover}`
                   }`}
                 >
                   <div>
                     <span className="text-xs font-medium block">{style.name}</span>
-                    <span className="text-[10px] text-neutral-400 block">{style.preview}</span>
+                    <span className={`text-[10px] ${subtextColor} block`}>{style.preview}</span>
                   </div>
                   {currentStyle === style.id && <Check size={16} className="text-[#38BDF8]" />}
                 </div>
@@ -261,7 +267,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
           {/* Clock Size */}
           <div>
-            <label className="text-xs font-semibold block mb-2 text-neutral-300">Clock Size</label>
+            <label className={`text-xs font-semibold block mb-2 ${labelColor}`}>Clock Size</label>
             <div className="grid grid-cols-3 gap-2">
               {(['compact', 'standard', 'large'] as const).map((size) => (
                 <button
@@ -270,7 +276,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                   className={`py-2 text-xs rounded-xl border transition capitalize ${
                     currentSize === size
                       ? 'border-[#38BDF8] bg-[#38BDF8]/20 font-semibold text-[#38BDF8]'
-                      : 'border-white/10 bg-white/5 hover:bg-white/10 text-neutral-300'
+                      : `${itemBorder} ${itemBg} ${itemBgHover} ${textColor}`
                   }`}
                 >
                   {size}
@@ -280,13 +286,13 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           </div>
 
           {/* Wallpaper Readability Dimming Overlay */}
-          <div className="p-3 rounded-2xl bg-white/5 border border-white/10">
+          <div className={`p-3 rounded-2xl ${itemBg} border ${itemBorder}`}>
             <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-medium">Wallpaper Readability Scrim</span>
+              <span className="text-xs font-medium">Wallpaper Dimming Scrim</span>
               <span className="text-xs font-mono text-[#38BDF8]">{dimVal}%</span>
             </div>
-            <p className="text-[10px] text-neutral-400 mb-2">
-              Translucent overlay for text legibility over any wallpaper without obscuring it.
+            <p className={`text-[10px] ${subtextColor} mb-2`}>
+              Optional dimming for text legibility. Default is 0% for pure, natural wallpaper visibility.
             </p>
             <input
               type="range"
@@ -303,7 +309,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
           {/* Information & Glance Toggles */}
           <div className="space-y-2">
-            <label className="text-xs font-semibold block text-neutral-300">Glance & Interface Elements</label>
+            <label className={`text-xs font-semibold block ${labelColor}`}>Glance & Interface Elements</label>
 
             {[
               { key: 'showBattery', label: 'Battery Percentage & Status', desc: 'Display live battery in top header' },
@@ -319,13 +325,13 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                 <div
                   key={toggle.key}
                   onClick={() => onUpdateSettings((prev) => ({ ...prev, [toggle.key]: !val }))}
-                  className="p-2.5 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between cursor-pointer hover:bg-white/10 transition"
+                  className={`p-2.5 rounded-xl ${itemBg} border ${itemBorder} flex items-center justify-between cursor-pointer ${itemBgHover} transition`}
                 >
                   <div className="pr-2">
                     <span className="text-xs font-medium block">{toggle.label}</span>
-                    <span className="text-[10px] text-neutral-400 block">{toggle.desc}</span>
+                    <span className={`text-[10px] ${subtextColor} block`}>{toggle.desc}</span>
                   </div>
-                  <div className={`w-8 h-4 rounded-full p-0.5 transition-colors ${val ? 'bg-[#38BDF8]' : 'bg-neutral-700'}`}>
+                  <div className={`w-8 h-4 rounded-full p-0.5 transition-colors ${val ? 'bg-[#38BDF8]' : (isDark ? 'bg-neutral-700' : 'bg-neutral-300')}`}>
                     <div className={`w-3 h-3 rounded-full bg-white transition-transform ${val ? 'translate-x-4' : 'translate-x-0'}`} />
                   </div>
                 </div>
@@ -339,53 +345,73 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
   // Appearance & Themes Subpage
   if (subPage === 'appearance') {
+    const mainThemeOptions: Array<{ id: LauncherTheme; label: string; desc: string; icon: React.FC<{ size?: number; className?: string }> }> = [
+      { id: 'system', label: 'Follow System', desc: 'Automatically matches device dark/light theme', icon: Smartphone },
+      { id: 'light', label: 'Light Mode', desc: 'Clean, bright & soft grey surfaces', icon: Sun },
+      { id: 'dark', label: 'Dark Mode', desc: 'Deep navy, charcoal & cosmic midnight', icon: Moon }
+    ];
+
+    const isCurrentTheme = (themeId: LauncherTheme) => {
+      if (settings.theme === themeId) return true;
+      if (themeId === 'dark' && (settings.theme === 'charcoal-dark' || settings.theme === 'monochrome')) return true;
+      if (themeId === 'light' && settings.theme === 'warm-light') return true;
+      return false;
+    };
+
     return (
       <div className={`h-full flex flex-col pt-8 pb-4 px-5 select-none ${textColor}`}>
         <div className="flex items-center gap-3 pb-3 border-b border-black/5 dark:border-white/5">
           <button
             onClick={() => setSubPage('root')}
-            className="p-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition"
+            className={`p-1.5 rounded-full ${itemHover} transition`}
           >
             <ArrowLeft size={18} />
           </button>
           <h1 className="text-base font-semibold">Appearance & Themes</h1>
         </div>
 
-        <div className="flex-1 overflow-y-auto no-scrollbar py-3 space-y-5">
-          {/* Theme Selector */}
+        <div className="flex-1 overflow-y-auto no-scrollbar py-3 space-y-5 text-left">
+          {/* Main Theme Mode */}
           <div>
-            <label className="text-xs font-semibold block mb-2 text-left">Theme</label>
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { id: 'warm-light', label: 'Warm Light', icon: Sun },
-                { id: 'charcoal-dark', label: 'Charcoal', icon: Moon },
-                { id: 'monochrome', label: 'Minimal', icon: Palette }
-              ].map(({ id, label, icon: Icon }) => (
-                <button
-                  key={id}
-                  onClick={() =>
-                    onUpdateSettings((prev) => ({
-                      ...prev,
-                      theme: id as LauncherTheme
-                    }))
-                  }
-                  className={`p-3 rounded-2xl flex flex-col items-center gap-2 text-xs font-medium border transition ${
-                    settings.theme === id
-                      ? 'border-emerald-500 bg-emerald-500/10'
-                      : 'border-black/10 dark:border-white/10 hover:bg-black/5'
-                  }`}
-                >
-                  <Icon size={18} />
-                  <span>{label}</span>
-                </button>
-              ))}
+            <label className={`text-xs font-semibold block mb-2 ${labelColor}`}>Theme Mode</label>
+            <div className="space-y-2">
+              {mainThemeOptions.map(({ id, label, desc, icon: Icon }) => {
+                const active = isCurrentTheme(id);
+                return (
+                  <button
+                    key={id}
+                    onClick={() =>
+                      onUpdateSettings((prev) => ({
+                        ...prev,
+                        theme: id
+                      }))
+                    }
+                    className={`w-full p-3 rounded-2xl flex items-center justify-between border transition text-left ${
+                      active
+                        ? 'border-[#38BDF8] bg-[#38BDF8]/15 shadow-xs'
+                        : `${itemBorder} ${itemBg} ${itemBgHover}`
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-xl ${active ? 'bg-[#38BDF8] text-white' : (isDark ? 'bg-white/10 text-white' : 'bg-black/5 text-neutral-800')}`}>
+                        <Icon size={18} />
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold">{label}</div>
+                        <div className={`text-[10px] ${subtextColor}`}>{desc}</div>
+                      </div>
+                    </div>
+                    {active && <Check size={18} className="text-[#38BDF8]" strokeWidth={2.5} />}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
           {/* Accent Color */}
           <div>
-            <label className="text-xs font-semibold block mb-2 text-left">Accent Color</label>
-            <div className="flex items-center gap-3">
+            <label className={`text-xs font-semibold block mb-2 ${labelColor}`}>Accent Color</label>
+            <div className="flex items-center gap-2.5 flex-wrap">
               {accentColors.map((color) => (
                 <button
                   key={color}
@@ -396,9 +422,39 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                     }))
                   }
                   style={{ backgroundColor: color }}
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-white shadow-xs hover:scale-110 transition"
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-white shadow-xs hover:scale-110 transition border border-white/20"
                 >
                   {settings.accentColor === color && <Check size={14} strokeWidth={3} />}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Style Variants */}
+          <div>
+            <label className={`text-xs font-semibold block mb-2 ${labelColor}`}>Cosmic Tint Variants</label>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { id: 'warm-light' as LauncherTheme, label: 'Warm Light', icon: Sun },
+                { id: 'charcoal-dark' as LauncherTheme, label: 'Charcoal', icon: Moon },
+                { id: 'monochrome' as LauncherTheme, label: 'Monochrome', icon: Palette }
+              ].map(({ id, label, icon: Icon }) => (
+                <button
+                  key={id}
+                  onClick={() =>
+                    onUpdateSettings((prev) => ({
+                      ...prev,
+                      theme: id
+                    }))
+                  }
+                  className={`p-2.5 rounded-xl flex flex-col items-center gap-1.5 text-xs font-medium border transition ${
+                    settings.theme === id
+                      ? 'border-[#38BDF8] bg-[#38BDF8]/15 font-semibold text-[#38BDF8]'
+                      : `${itemBorder} ${itemBg} ${itemBgHover} ${textColor}`
+                  }`}
+                >
+                  <Icon size={16} />
+                  <span className="text-[11px]">{label}</span>
                 </button>
               ))}
             </div>
@@ -448,8 +504,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                   key={m.name}
                   className={`p-2.5 rounded-2xl border text-center transition cursor-pointer ${
                     m.active
-                      ? 'border-emerald-500/50 bg-emerald-500/10'
-                      : 'border-white/5 bg-black/5 dark:bg-white/5'
+                      ? 'border-[#38BDF8] bg-[#38BDF8]/15 font-semibold text-[#38BDF8]'
+                      : `${itemBorder} ${itemBg} ${textColor}`
                   }`}
                 >
                   <div className="text-[11px] font-semibold">{m.name}</div>
@@ -688,10 +744,14 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                       gestures: { ...prev.gestures, [key]: newAction }
                     }));
                   }}
-                  className="text-xs bg-black/5 dark:bg-white/10 rounded-lg p-1.5 outline-none border border-black/10 dark:border-white/10"
+                  className={`text-xs rounded-lg p-1.5 outline-none border ${
+                    isDark
+                      ? 'bg-[#151B26] text-white border-white/10'
+                      : 'bg-white text-neutral-800 border-black/15 shadow-2xs'
+                  }`}
                 >
                   {gestureOptions.map((opt) => (
-                    <option key={opt.action} value={opt.action} className="bg-neutral-800 text-white">
+                    <option key={opt.action} value={opt.action} className={isDark ? 'bg-neutral-900 text-white' : 'bg-white text-neutral-900'}>
                       {opt.label}
                     </option>
                   ))}

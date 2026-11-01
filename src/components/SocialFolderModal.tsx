@@ -1,6 +1,6 @@
-import React from 'react';
 import { AppItem, LauncherSettings } from '../launcher/types';
 import { AppIcon } from './Icons';
+import { resolveIsDark, getSemanticColors } from '../launcher/theme';
 
 interface SocialFolderModalProps {
   settings: LauncherSettings;
@@ -15,11 +15,12 @@ export const SocialFolderModal: React.FC<SocialFolderModalProps> = ({
   onClose,
   onLaunchApp
 }) => {
-  const isLight = settings.theme === 'warm-light';
-  const textColor = isLight ? 'text-[#242725]' : 'text-[#F1F3F4]';
-  const modalBg = isLight
-    ? 'bg-[#F7F6F2] border border-black/10'
-    : 'bg-[#1E2126] border border-white/10';
+  const isDark = resolveIsDark(settings.theme);
+  const colors = getSemanticColors(settings.theme, settings.accentColor);
+  const textColor = isDark ? 'text-[#F8FAFC]' : 'text-[#1E293B]';
+  const modalBg = isDark
+    ? 'bg-[#151B26] border border-white/10'
+    : 'bg-[#FFFFFF] border border-black/10 shadow-2xl';
 
   return (
     <div className="absolute inset-0 z-40 bg-black/40 backdrop-blur-xs flex items-center justify-center p-6 animate-in fade-in">

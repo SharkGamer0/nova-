@@ -335,14 +335,32 @@ fun AppListScreen(
                                     Text(
                                         text = app.label,
                                         fontSize = 15.sp,
-                                        fontWeight = FontWeight.Medium,
+                                        fontWeight = FontWeight.SemiBold,
                                         color = MaterialTheme.colorScheme.onBackground
                                     )
-                                    Text(
-                                        text = app.category,
-                                        fontSize = 11.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Surface(
+                                            shape = RoundedCornerShape(6.dp),
+                                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.75f)
+                                        ) {
+                                            Text(
+                                                text = app.category,
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.Medium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                            )
+                                        }
+                                        if (app.launchCount > 0) {
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = "• ${app.launchCount} launches",
+                                                fontSize = 10.sp,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
                                 }
 
                                 if (app.isFavorite) {

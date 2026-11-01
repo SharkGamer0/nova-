@@ -97,8 +97,14 @@ fun HomeScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            // Optional subtle wallpaper readability overlay (never forces opaque black)
-            .background(Color(0xFF07090E).copy(alpha = wallpaperDimOverlay.coerceIn(0f, 0.7f)))
+            // Optional user-controlled wallpaper dimming overlay (0% by default for natural wallpaper visibility)
+            .background(
+                if (wallpaperDimOverlay > 0.005f) {
+                    Color.Black.copy(alpha = wallpaperDimOverlay.coerceIn(0f, 0.7f))
+                } else {
+                    Color.Transparent
+                }
+            )
             .statusBarsPadding()
             // Native gesture activation: Long press anywhere on empty home canvas opens global/workspace Context Ring
             .pointerInput(activeWorkspace.id) {

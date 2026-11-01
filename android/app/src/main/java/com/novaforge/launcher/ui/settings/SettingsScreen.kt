@@ -408,10 +408,11 @@ private fun AppearanceSettingsSubscreen(
     onSetAccent: (String) -> Unit
 ) {
     val themes = listOf(
-        "cosmic-dark" to "Cosmic Dark (Official near-black & midnight blue)",
+        "system" to "Follow System (Auto-detects device dark/light theme)",
+        "cosmic-dark" to "Dark Mode (Cosmic deep navy & midnight)",
+        "warm-light" to "Light Mode (Clean, bright & soft grey surfaces)",
         "charcoal-dark" to "Charcoal Dark (Deep matte night theme)",
-        "monochrome" to "Monochrome (High contrast minimalist)",
-        "warm-light" to "Warm Light (Default Grace aesthetic)"
+        "monochrome" to "Monochrome (High contrast minimalist)"
     )
 
     val accents = listOf(
@@ -427,6 +428,9 @@ private fun AppearanceSettingsSubscreen(
         Spacer(modifier = Modifier.height(8.dp))
 
         themes.forEach { (mode, label) ->
+            val isSelected = currentTheme == mode ||
+                (mode == "cosmic-dark" && currentTheme == "dark") ||
+                (mode == "warm-light" && currentTheme == "light")
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -434,7 +438,7 @@ private fun AppearanceSettingsSubscreen(
                     .padding(vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                RadioButton(selected = currentTheme == mode, onClick = { onSetTheme(mode) })
+                RadioButton(selected = isSelected, onClick = { onSetTheme(mode) })
                 Spacer(modifier = Modifier.width(10.dp))
                 Text(label, fontSize = 14.sp)
             }

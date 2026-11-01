@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { LauncherSettings, LauncherTheme } from '../launcher/types';
 import { WALLPAPERS } from '../launcher/sampleData';
+import { resolveIsDark, getSemanticColors } from '../launcher/theme';
 import { Wifi, Signal, Battery, Lock } from 'lucide-react';
 
 interface PhoneFrameProps {
@@ -23,7 +24,9 @@ export const PhoneFrame: React.FC<PhoneFrameProps> = ({
   const lastTapTime = useRef<number>(0);
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
 
-  const isLight = settings.theme === 'warm-light';
+  const isDark = resolveIsDark(settings.theme);
+  const isLight = !isDark;
+  const colors = getSemanticColors(settings.theme, settings.accentColor);
   const currentWallpaper = WALLPAPERS[settings.wallpaperIndex % WALLPAPERS.length] || WALLPAPERS[0];
 
   // Handle Touch/Mouse gesture events
@@ -83,14 +86,9 @@ export const PhoneFrame: React.FC<PhoneFrameProps> = ({
   };
 
   // Theme styling for the phone body
-  const phoneBg =
-    settings.theme === 'warm-light'
-      ? 'bg-[#F7F6F2]'
-      : settings.theme === 'charcoal-dark'
-      ? 'bg-[#121417]'
-      : 'bg-[#000000]';
-
-  const statusBarText = isLight ? 'text-[#2D312E]' : 'text-[#F1F3F4]';
+  const statusBarText = isLight
+    ? 'text-slate-900 drop-shadow-[0_1px_2px_rgba(255,255,255,0.7)]'
+    : 'text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]';
 
   return (
     <div className="relative mx-auto my-auto select-none transition-all duration-300">
@@ -104,19 +102,22 @@ export const PhoneFrame: React.FC<PhoneFrameProps> = ({
           onPointerDown={handlePointerDown}
           onPointerUp={handlePointerUp}
           onPointerMove={handlePointerMove}
-          className={`w-full h-full rounded-[40px] ${phoneBg} relative overflow-hidden flex flex-col`}
+          className="w-full h-full rounded-[40px] bg-black relative overflow-hidden flex flex-col"
           style={{
             backgroundImage: `url('${currentWallpaper.url}')`,
             backgroundSize: 'cover',
             backgroundPosition: 'center'
           }}
         >
-          {/* Subtle overlay so text remains readable against the mountain wallpaper */}
-          <div
-            className={`absolute inset-0 pointer-events-none transition-opacity ${
-              isLight ? 'bg-[#F7F6F2]/85 backdrop-blur-[2px]' : 'bg-[#121417]/88 backdrop-blur-[2px]'
-            }`}
-          />
+          {/* Optional user-controlled wallpaper dimming overlay (0% by default for natural wallpaper visibility) */}
+          {(settings.wallpaperDimOverlay ?? 0) > 0 && (
+            <div
+              className="absolute inset-0 pointer-events-none transition-opacity"
+              style={{
+                backgroundColor: `rgba(0, 0, 0, ${settings.wallpaperDimOverlay})`
+              }}
+            />
+          )}
 
           {/* Android Status Bar */}
           <div

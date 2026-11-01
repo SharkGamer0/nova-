@@ -333,8 +333,8 @@ export const INITIAL_NOTES: NoteItem[] = [
 ];
 
 export const INITIAL_SETTINGS: LauncherSettings = {
-  theme: 'warm-light',
-  accentColor: '#2A9D8F',
+  theme: 'system',
+  accentColor: '#38BDF8',
   iconShape: 'circle',
   iconStyle: 'default',
   gestures: {
@@ -349,7 +349,8 @@ export const INITIAL_SETTINGS: LauncherSettings = {
   focusAllowedAppIds: ['app-chrome', 'app-notes', 'app-calendar', 'app-calculator'],
   focusSchedule: '9:00 AM – 12:00 PM',
   hiddenAppsPin: '1234',
-  wallpaperIndex: 0
+  wallpaperIndex: 0,
+  wallpaperDimOverlay: 0
 };
 
 export const WALLPAPERS = [

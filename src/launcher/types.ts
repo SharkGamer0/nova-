@@ -13,7 +13,7 @@ export interface AppItem {
 
 export type IconShape = 'circle' | 'squircle' | 'rounded-square' | 'square' | 'pebble';
 export type IconStyle = 'default' | 'monochrome' | 'outline' | 'custom';
-export type LauncherTheme = 'warm-light' | 'charcoal-dark' | 'monochrome';
+export type LauncherTheme = 'system' | 'light' | 'dark' | 'warm-light' | 'charcoal-dark' | 'monochrome';
 
 export interface AgendaItem {
   id: string;
