@@ -2,7 +2,10 @@ package com.novaforge.launcher.ui.settings
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -701,45 +704,167 @@ private fun ScreenTimeSubscreen(
     screenTime: ScreenTimeSummary,
     onRequestPermission: () -> Unit
 ) {
-    Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
-        Card(
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(modifier = Modifier.padding(18.dp)) {
-                Text("Today's Total Screen Time", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(screenTime.totalTimeFormatted, fontSize = 36.sp, fontWeight = FontWeight.Light)
-                if (screenTime.isDemoData) {
-                    Text("Showing demonstration values. Tap below to grant real UsageStats permission.", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
-                }
-            }
-        }
+    val context = LocalContext.current
 
-        Spacer(modifier = Modifier.height(20.dp))
-
-        if (!screenTime.hasPermission) {
-            Button(
-                onClick = onRequestPermission,
+    LazyColumn(modifier = Modifier.fillMaxSize().padding(20.dp)) {
+        item {
+            Card(
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Grant Usage Access Permission")
+                Column(modifier = Modifier.padding(18.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Today's Total Screen Time",
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = if (screenTime.hasPermission) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else Color(0xFFE76F51).copy(alpha = 0.15f)
+                        ) {
+                            Text(
+                                text = if (screenTime.hasPermission) "Active" else "Permission Needed",
+                                color = if (screenTime.hasPermission) MaterialTheme.colorScheme.primary else Color(0xFFE76F51),
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = if (screenTime.hasPermission) screenTime.totalTimeFormatted else "-- h -- m",
+                        fontSize = 32.sp,
+                        lineHeight = 38.sp,
+                        fontWeight = FontWeight.Light,
+                        color = if (screenTime.hasPermission) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    )
+
+                    if (screenTime.isDemoData) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Showing demonstration values. Follow instructions below for real stats.",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
             }
-            Spacer(modifier = Modifier.height(16.dp))
+
+            Spacer(modifier = Modifier.height(18.dp))
         }
 
-        Text("Top App Usage", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-        Spacer(modifier = Modifier.height(10.dp))
+        if (!screenTime.hasPermission) {
+            item {
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.Security,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Android 13–15 Restricted Settings",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
 
-        screenTime.topAppUsage.forEach { (appName, usageTime) ->
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(appName, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                Text(usageTime, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = "On Android 13–15, sideloaded applications show \"Controlled by Restricted Setting\" with a disabled toggle. Follow these 2 steps:",
+                            fontSize = 12.sp,
+                            lineHeight = 17.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Text(
+                            text = "1. Tap \"1. Open App Info\" below.\n2. In App Info, tap the 3 dots menu (⋮) in the top-right corner.\n3. Tap \"Allow restricted settings\" and authenticate.\n4. Return here and tap \"2. Grant Usage Access\" to turn on the toggle.",
+                            fontSize = 12.sp,
+                            lineHeight = 18.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        Button(
+                            onClick = {
+                                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                    data = Uri.fromParts("package", context.packageName, null)
+                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                }
+                                context.startActivity(intent)
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                        ) {
+                            Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("1. Open NovaForge App Info", fontSize = 13.sp)
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        OutlinedButton(
+                            onClick = onRequestPermission,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("2. Grant Usage Access Settings", fontSize = 13.sp)
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
             }
-            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+        }
+
+        item {
+            Text("Top App Usage", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
+        if (screenTime.topAppUsage.isEmpty()) {
+            item {
+                Text(
+                    text = if (screenTime.hasPermission) "No foreground apps recorded today yet." else "Grant usage access above to view app screen time.",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            }
+        } else {
+            items(screenTime.topAppUsage) { (appName, usageTime) ->
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(appName, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                    Text(usageTime, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            }
         }
     }
 }

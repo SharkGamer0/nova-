@@ -33,7 +33,8 @@ fun LauncherRootScreen(
     onOpenAppInfo: (String) -> Unit,
     onRequestUninstall: (String) -> Unit,
     onOpenSystemSetting: (String) -> Unit,
-    onOpenSettings: () -> Unit
+    onOpenSettings: () -> Unit,
+    onSelectWidgetProvider: ((android.appwidget.AppWidgetProviderInfo) -> Unit)? = null
 ) {
     viewModel.onLaunchAppFromMacro = onLaunchApp
 
@@ -93,7 +94,7 @@ fun LauncherRootScreen(
     var showAssignmentDialog by remember { androidx.compose.runtime.mutableStateOf(false) }
     var assignmentDialogTargetApp by remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
     var assignmentDialogTargetAnim by remember { androidx.compose.runtime.mutableStateOf<com.novaforge.launcher.icon.AnimatedIconItem?>(null) }
-    var showSplash by remember { androidx.compose.runtime.mutableStateOf(true) }
+    var showSplash by remember { androidx.compose.runtime.mutableStateOf(!com.novaforge.launcher.NovaForgeApp.hasCompletedColdStartSplash) }
 
     // Filter visible apps: Exclude hidden apps from normal drawer
     val visibleApps = apps.filter { app ->
@@ -299,6 +300,7 @@ fun LauncherRootScreen(
                     onResizeWidgetHeight = { id, h -> viewModel.resizeWidgetHeight(id, h) },
                     onMoveWidget = { id, dir -> viewModel.moveWidget(id, dir) },
                     onRemoveWidget = { id -> viewModel.removeWidget(id, onDeleteWidgetId) },
+                    onSelectProvider = { provider -> onSelectWidgetProvider?.invoke(provider) },
                     onOpenSettings = { viewModel.openSettings() }
                 )
 
@@ -480,7 +482,10 @@ fun LauncherRootScreen(
         // Official NovaForge Splash Screen with subtle fade-in and near-black cosmic theme
         if (showSplash) {
             LauncherSplashScreen(
-                onDismiss = { showSplash = false }
+                onDismiss = {
+                    showSplash = false
+                    com.novaforge.launcher.NovaForgeApp.hasCompletedColdStartSplash = true
+                }
             )
         }
     }

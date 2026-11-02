@@ -12,11 +12,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
@@ -43,12 +42,11 @@ fun NovaForgeLogoImage(
     val context = LocalContext.current
 
     val resolvedBitmap: ImageBitmap? = remember(context) {
-        try {
+        val decoded = try {
             val options = BitmapFactory.Options().apply {
                 inPreferredConfig = Bitmap.Config.ARGB_8888
             }
-            val bitmap = BitmapFactory.decodeResource(context.resources, R.drawable.novaforge_logo, options)
-            bitmap?.asImageBitmap()
+            BitmapFactory.decodeResource(context.resources, R.drawable.novaforge_logo, options)
         } catch (_: android.content.res.Resources.NotFoundException) {
             null
         } catch (_: IllegalArgumentException) {
@@ -58,26 +56,32 @@ fun NovaForgeLogoImage(
             null
         } catch (_: Exception) {
             null
-        } ?: try {
-            val drawable = ContextCompat.getDrawable(context, R.drawable.novaforge_logo)
-                ?: ContextCompat.getDrawable(context, R.drawable.ic_novaforge_vector_logo)
-            if (drawable != null) {
-                val w = if (drawable.intrinsicWidth > 0) drawable.intrinsicWidth.coerceIn(48, 512) else 108
-                val h = if (drawable.intrinsicHeight > 0) drawable.intrinsicHeight.coerceIn(48, 512) else 108
-                val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-                val canvas = android.graphics.Canvas(bmp)
-                drawable.setBounds(0, 0, w, h)
-                drawable.draw(canvas)
-                bmp.asImageBitmap()
-            } else null
-        } catch (_: android.content.res.Resources.NotFoundException) {
-            null
-        } catch (_: IllegalArgumentException) {
-            null
-        } catch (_: OutOfMemoryError) {
-            null
-        } catch (_: Exception) {
-            null
+        }
+
+        if (decoded != null && !decoded.isRecycled) {
+            decoded.asImageBitmap()
+        } else {
+            try {
+                val drawable = ContextCompat.getDrawable(context, R.drawable.novaforge_logo)
+                    ?: ContextCompat.getDrawable(context, R.drawable.ic_novaforge_vector_logo)
+                if (drawable != null) {
+                    val w = if (drawable.intrinsicWidth > 0) drawable.intrinsicWidth.coerceIn(48, 512) else 108
+                    val h = if (drawable.intrinsicHeight > 0) drawable.intrinsicHeight.coerceIn(48, 512) else 108
+                    val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+                    val canvas = android.graphics.Canvas(bmp)
+                    drawable.setBounds(0, 0, w, h)
+                    drawable.draw(canvas)
+                    bmp.asImageBitmap()
+                } else null
+            } catch (_: android.content.res.Resources.NotFoundException) {
+                null
+            } catch (_: IllegalArgumentException) {
+                null
+            } catch (_: OutOfMemoryError) {
+                null
+            } catch (_: Exception) {
+                null
+            }
         }
     }
 
@@ -97,6 +101,7 @@ fun NovaForgeLogoImage(
  * Dedicated vector logo loader converting ic_novaforge_vector_logo XML directly.
  * If vector drawable conversion fails for any reason, falls back to Compose Canvas.
  */
+@Suppress("unused")
 @Composable
 fun NovaForgeVectorLogo(
     modifier: Modifier = Modifier,
@@ -142,6 +147,7 @@ fun NovaForgeVectorLogo(
  * Pure Jetpack Compose Canvas rendering of the official NovaForge cosmic identity.
  * Has zero resource file dependencies and can never throw ResourceResolutionException.
  */
+@Suppress("unused")
 @Composable
 fun NovaForgeCanvasProceduralLogo(
     modifier: Modifier = Modifier
@@ -158,7 +164,7 @@ fun NovaForgeCanvasProceduralLogo(
             // 1. Subtle lower planetary horizon arc
             val horizonPath = Path().apply {
                 moveTo(w * 0.12f, h * 0.90f)
-                quadraticBezierTo(w * 0.50f, h * 0.82f, w * 0.88f, h * 0.90f)
+                quadraticTo(w * 0.50f, h * 0.82f, w * 0.88f, h * 0.90f)
             }
             drawPath(
                 path = horizonPath,

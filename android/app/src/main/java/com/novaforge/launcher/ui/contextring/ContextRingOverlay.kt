@@ -4,6 +4,9 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -139,6 +142,22 @@ fun ContextRingOverlay(
             onNavigateBack = onNavigateBack,
             onDismiss = onDismiss
         )
+
+        // Explicit visible close button in top right
+        IconButton(
+            onClick = onDismiss,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .statusBarsPadding()
+                .padding(16.dp)
+                .background(Color(0x55000000), CircleShape)
+        ) {
+            Icon(
+                Icons.Default.Close,
+                contentDescription = "Close Context Ring",
+                tint = Color.White
+            )
+        }
 
         // Confirmation Dialog for high-impact multi-step macros
         pendingConfirmationAction?.let { action ->

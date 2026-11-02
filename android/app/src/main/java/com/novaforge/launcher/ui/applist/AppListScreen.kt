@@ -231,13 +231,7 @@ fun AppListScreen(
                                     .width(64.dp)
                                     .combinedClickable(
                                         onClick = { onLaunchApp(app.packageName) },
-                                        onLongClick = {
-                                            if (onTriggerContextRing != null) {
-                                                onTriggerContextRing(200f, 300f, app.packageName, null)
-                                            } else {
-                                                selectedAppForAction = app
-                                            }
-                                        }
+                                        onLongClick = { selectedAppForAction = app }
                                     )
                             ) {
                                 com.novaforge.launcher.icon.AnimatedAppIcon(
@@ -308,13 +302,7 @@ fun AppListScreen(
                                     .fillMaxWidth()
                                     .combinedClickable(
                                         onClick = { onLaunchApp(app.packageName) },
-                                        onLongClick = {
-                                            if (onTriggerContextRing != null) {
-                                                onTriggerContextRing(200f, 300f, app.packageName, null)
-                                            } else {
-                                                selectedAppForAction = app
-                                            }
-                                        }
+                                        onLongClick = { selectedAppForAction = app }
                                     )
                                     .padding(vertical = 7.dp),
                                 verticalAlignment = Alignment.CenterVertically

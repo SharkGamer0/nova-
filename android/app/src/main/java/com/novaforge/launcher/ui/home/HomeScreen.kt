@@ -106,14 +106,6 @@ fun HomeScreen(
                 }
             )
             .statusBarsPadding()
-            // Native gesture activation: Long press anywhere on empty home canvas opens global/workspace Context Ring
-            .pointerInput(activeWorkspace.id) {
-                detectTapGestures(
-                    onLongPress = { offset ->
-                        onTriggerContextRing?.invoke(offset.x, offset.y, null, activeWorkspace.id)
-                    }
-                )
-            }
             .padding(horizontal = 20.dp)
     ) {
         Column(
@@ -219,6 +211,22 @@ fun HomeScreen(
                             fontWeight = FontWeight.Medium
                         )
                         Spacer(modifier = Modifier.width(6.dp))
+                    }
+
+                    if (onTriggerContextRing != null) {
+                        IconButton(
+                            onClick = {
+                                onTriggerContextRing.invoke(540f, 960f, null, activeWorkspace.id)
+                            },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.RadioButtonChecked,
+                                contentDescription = "Open Context Ring",
+                                tint = workspaceAccent,
+                                modifier = Modifier.size(17.dp)
+                            )
+                        }
                     }
 
                     IconButton(

@@ -202,11 +202,18 @@ class ScreenTimeRepository(private val context: Context) {
         }
     }
 
-    fun getDailyUsageStats(): ScreenTimeSummary {
+    fun getAppDetailsSettingsIntent(): Intent {
+        return Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+            data = Uri.fromParts("package", context.packageName, null)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+    }
+
+    suspend fun getDailyUsageStats(): ScreenTimeSummary = withContext(Dispatchers.IO) {
         val hasPerm = hasUsagePermission()
         if (!hasPerm) {
-            return ScreenTimeSummary(
-                totalTimeFormatted = "Usage Access Required",
+            return@withContext ScreenTimeSummary(
+                totalTimeFormatted = "0h 0m",
                 totalTimeMinutes = 0L,
                 topAppUsage = emptyList(),
                 hasPermission = false,
@@ -215,8 +222,8 @@ class ScreenTimeRepository(private val context: Context) {
         }
 
         val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager
-            ?: return ScreenTimeSummary(
-                totalTimeFormatted = "Service Unavailable",
+            ?: return@withContext ScreenTimeSummary(
+                totalTimeFormatted = "0h 0m",
                 totalTimeMinutes = 0L,
                 topAppUsage = emptyList(),
                 hasPermission = true,
@@ -243,7 +250,7 @@ class ScreenTimeRepository(private val context: Context) {
         }
 
         if (stats.isNullOrEmpty()) {
-            return ScreenTimeSummary(
+            return@withContext ScreenTimeSummary(
                 totalTimeFormatted = "0m",
                 totalTimeMinutes = 0L,
                 topAppUsage = emptyList(),
@@ -292,7 +299,7 @@ class ScreenTimeRepository(private val context: Context) {
             name to timeText
         }
 
-        return ScreenTimeSummary(
+        ScreenTimeSummary(
             totalTimeFormatted = formattedTotal,
             totalTimeMinutes = totalMinutes,
             topAppUsage = topApps,

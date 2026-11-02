@@ -3,6 +3,7 @@ package com.novaforge.launcher
 import android.Manifest
 import android.appwidget.AppWidgetHost
 import android.appwidget.AppWidgetManager
+import android.appwidget.AppWidgetProviderInfo
 import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings
@@ -149,6 +150,25 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun bindSelectedProvider(provider: AppWidgetProviderInfo) {
+        val id = appWidgetHost.allocateAppWidgetId()
+        pendingWidgetId = id
+        val canBind = try {
+            appWidgetManager.bindAppWidgetIdIfAllowed(id, provider.provider)
+        } catch (_: Exception) {
+            false
+        }
+        if (canBind) {
+            checkAndLaunchWidgetConfiguration(id)
+        } else {
+            val bindIntent = Intent(AppWidgetManager.ACTION_APPWIDGET_BIND).apply {
+                putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id)
+                putExtra(AppWidgetManager.EXTRA_APPWIDGET_PROVIDER, provider.provider)
+            }
+            bindWidgetLauncher.launch(bindIntent)
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -206,7 +226,8 @@ class MainActivity : ComponentActivity() {
                         onOpenAppInfo = { packageName -> openAppInfo(packageName) },
                         onRequestUninstall = { packageName -> requestUninstall(packageName) },
                         onOpenSystemSetting = { setting -> handleSystemSettingCommand(setting) },
-                        onOpenSettings = { viewModel.openSettings() }
+                        onOpenSettings = { viewModel.openSettings() },
+                        onSelectWidgetProvider = { provider -> bindSelectedProvider(provider) }
                     )
                 }
             }

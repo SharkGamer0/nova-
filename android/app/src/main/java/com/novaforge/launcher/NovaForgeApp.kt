@@ -74,5 +74,6 @@ class NovaForgeApp : Application(), ImageLoaderFactory {
     companion object {
         lateinit var instance: NovaForgeApp
             private set
+        var hasCompletedColdStartSplash: Boolean = false
     }
 }

@@ -21,11 +21,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.novaforge.launcher.icon.*
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,6 +44,7 @@ fun AnimatedIconLibraryScreen(
     onOpenAssignmentDialog: (AnimatedIconItem?) -> Unit,
     onBack: () -> Unit
 ) {
+    val context = LocalContext.current
     var searchQuery by remember { mutableStateOf("") }
     var selectedCollectionId by remember { mutableStateOf("all") }
     var inspectingItem by remember { mutableStateOf<AnimatedIconItem?>(null) }
@@ -162,75 +165,101 @@ fun AnimatedIconLibraryScreen(
             ) {
                 items(collections, key = { it.id }) { col ->
                     val isSelected = col.id == selectedCollectionId
-                    FilterChip(
-                        selected = isSelected,
-                        onClick = { selectedCollectionId = col.id },
-                        label = {
-                            Text(
-                                text = "${col.name} (${col.iconCount})",
-                                fontSize = 11.sp,
-                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { selectedCollectionId = col.id },
+                            label = {
+                                Text(
+                                    text = "${col.name} (${col.iconCount})",
+                                    fontSize = 11.sp,
+                                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+                                )
+                            },
+                            shape = RoundedCornerShape(14.dp),
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                selectedLabelColor = Color.White,
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                                labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            ),
+                            border = FilterChipDefaults.filterChipBorder(
+                                borderColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.25f),
+                                borderWidth = 1.dp,
+                                enabled = true,
+                                selected = isSelected
                             )
-                        },
-                        shape = RoundedCornerShape(14.dp),
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primary,
-                            selectedLabelColor = Color.White
                         )
-                    )
+                    }
                 }
-            }
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Engine & Battery Mode Pill Banner
+            // Engine & Battery Mode Pill Banner — spacious two-tier layout
             Surface(
-                shape = RoundedCornerShape(14.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                Column(
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .clip(CircleShape)
-                                .background(
-                                    when (engineSettings.engineMode) {
-                                        BatteryEngineMode.BATTERY_SAVER -> Color(0xFFE76F51)
-                                        BatteryEngineMode.BALANCED -> MaterialTheme.colorScheme.primary
-                                        BatteryEngineMode.PERFORMANCE -> Color(0xFF2A9D8F)
-                                    }
-                                )
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Engine: ${engineSettings.engineMode.displayName} (${engineSettings.engineMode.maxSimultaneous} max simultaneous)",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        BatteryEngineMode.values().forEach { mode ->
-                            val isCurrent = engineSettings.engineMode == mode
-                            Text(
-                                text = mode.name.take(4),
-                                fontSize = 9.sp,
-                                fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
-                                color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(if (isCurrent) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else Color.Transparent)
-                                    .clickable { onUpdateEngineMode(mode) }
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        when (engineSettings.engineMode) {
+                                            BatteryEngineMode.BATTERY_SAVER -> Color(0xFFE76F51)
+                                            BatteryEngineMode.BALANCED -> MaterialTheme.colorScheme.primary
+                                            BatteryEngineMode.PERFORMANCE -> Color(0xFF2A9D8F)
+                                        }
+                                    )
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Engine: ${engineSettings.engineMode.displayName}",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                         }
+
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            BatteryEngineMode.values().forEach { mode ->
+                                val isCurrent = engineSettings.engineMode == mode
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (isCurrent) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                                    border = if (isCurrent) BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null,
+                                    modifier = Modifier.clickable { onUpdateEngineMode(mode) }
+                                ) {
+                                    Text(
+                                        text = when (mode) {
+                                            BatteryEngineMode.BATTERY_SAVER -> "Saver"
+                                            BatteryEngineMode.BALANCED -> "Balanced"
+                                            BatteryEngineMode.PERFORMANCE -> "Max"
+                                        },
+                                        fontSize = 10.sp,
+                                        fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
+                            }
+                        }
                     }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Max ${engineSettings.engineMode.maxSimultaneous} simultaneous animations • Throttled automatically on low battery",
+                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
                 }
             }
 
@@ -283,12 +312,24 @@ fun AnimatedIconLibraryScreen(
                                         .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    RenderProceduralAnimation(
-                                        format = item.format,
-                                        animationId = item.id,
-                                        speed = 1.0f,
-                                        size = 44.dp
-                                    )
+                                    val itemFile = remember(item.relativeFilePath) {
+                                        File(context.filesDir, "animated_icons/${item.relativeFilePath}")
+                                    }
+                                    if (!item.isPreset && itemFile.exists() && itemFile.length() > 0) {
+                                        RenderRealAnimation(
+                                            file = itemFile,
+                                            format = item.format,
+                                            speed = 1.0f,
+                                            size = 44.dp
+                                        )
+                                    } else {
+                                        RenderProceduralAnimation(
+                                            format = item.format,
+                                            animationId = item.id,
+                                            speed = 1.0f,
+                                            size = 44.dp
+                                        )
+                                    }
                                 }
 
                                 Spacer(modifier = Modifier.height(10.dp))
@@ -370,12 +411,24 @@ fun AnimatedIconLibraryScreen(
                         .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    RenderProceduralAnimation(
-                        format = item.format,
-                        animationId = item.id,
-                        speed = previewSpeed,
-                        size = 72.dp
-                    )
+                    val previewFile = remember(item.relativeFilePath) {
+                        File(context.filesDir, "animated_icons/${item.relativeFilePath}")
+                    }
+                    if (!item.isPreset && previewFile.exists() && previewFile.length() > 0) {
+                        RenderRealAnimation(
+                            file = previewFile,
+                            format = item.format,
+                            speed = previewSpeed,
+                            size = 72.dp
+                        )
+                    } else {
+                        RenderProceduralAnimation(
+                            format = item.format,
+                            animationId = item.id,
+                            speed = previewSpeed,
+                            size = 72.dp
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(14.dp))
