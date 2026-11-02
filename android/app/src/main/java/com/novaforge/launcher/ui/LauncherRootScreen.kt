@@ -252,7 +252,7 @@ fun LauncherRootScreen(
                             "/automations" -> viewModel.openAutomations()
                             "/widgets" -> viewModel.navigateToWidgets()
                             "/apps" -> viewModel.navigateToAppDrawer()
-                            "/settings" -> viewModel.openSettings()
+                            "/settings", "/about" -> viewModel.openSettings()
                             "/icons", "/animated-icons" -> viewModel.openAnimatedIconLibrary()
                             "/rings", "/context-rings" -> viewModel.openContextRingDesigner()
                             "/focus" -> viewModel.setFocusMode(!focusModeEnabled)

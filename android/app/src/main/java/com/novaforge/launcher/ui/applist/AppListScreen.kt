@@ -469,20 +469,15 @@ fun AppListScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.padding(bottom = 20.dp)
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clip(RoundedCornerShape(14.dp))
-                                .background(Color(app.colorHex)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = app.label.take(1),
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp
-                            )
-                        }
+                        com.novaforge.launcher.icon.AnimatedAppIcon(
+                            packageName = app.packageName,
+                            label = app.label,
+                            fallbackColor = Color(app.colorHex),
+                            size = 44.dp,
+                            shape = RoundedCornerShape(14.dp),
+                            assignment = iconAssignments[app.packageName],
+                            animationItem = animations.find { it.id == iconAssignments[app.packageName]?.animationId }
+                        )
                         Spacer(modifier = Modifier.width(14.dp))
                         Column {
                             Text(

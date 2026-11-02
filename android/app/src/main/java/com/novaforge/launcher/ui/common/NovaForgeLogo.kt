@@ -49,7 +49,14 @@ fun NovaForgeLogoImage(
             }
             val bitmap = BitmapFactory.decodeResource(context.resources, R.drawable.novaforge_logo, options)
             bitmap?.asImageBitmap()
-        } catch (_: Throwable) {
+        } catch (_: android.content.res.Resources.NotFoundException) {
+            null
+        } catch (_: IllegalArgumentException) {
+            null
+        } catch (_: OutOfMemoryError) {
+            // Local allocation failure for raster bitmap; gracefully proceed to tier-2/3
+            null
+        } catch (_: Exception) {
             null
         } ?: try {
             val drawable = ContextCompat.getDrawable(context, R.drawable.novaforge_logo)
@@ -63,14 +70,65 @@ fun NovaForgeLogoImage(
                 drawable.draw(canvas)
                 bmp.asImageBitmap()
             } else null
-        } catch (_: Throwable) {
+        } catch (_: android.content.res.Resources.NotFoundException) {
+            null
+        } catch (_: IllegalArgumentException) {
+            null
+        } catch (_: OutOfMemoryError) {
+            null
+        } catch (_: Exception) {
             null
         }
     }
 
-    if (resolvedBitmap != null) {
+    if (resolvedBitmap != null && !resolvedBitmap.asAndroidBitmap().isRecycled) {
         Image(
             bitmap = resolvedBitmap,
+            contentDescription = contentDescription,
+            contentScale = ContentScale.Fit,
+            modifier = modifier
+        )
+    } else {
+        NovaForgeCanvasProceduralLogo(modifier = modifier)
+    }
+}
+
+/**
+ * Dedicated vector logo loader converting ic_novaforge_vector_logo XML directly.
+ * If vector drawable conversion fails for any reason, falls back to Compose Canvas.
+ */
+@Composable
+fun NovaForgeVectorLogo(
+    modifier: Modifier = Modifier,
+    contentDescription: String? = "NovaForge Vector Logo"
+) {
+    val context = LocalContext.current
+    val vectorBitmap: ImageBitmap? = remember(context) {
+        try {
+            val drawable = ContextCompat.getDrawable(context, R.drawable.ic_novaforge_vector_logo)
+            if (drawable != null) {
+                val w = if (drawable.intrinsicWidth > 0) drawable.intrinsicWidth.coerceIn(48, 512) else 108
+                val h = if (drawable.intrinsicHeight > 0) drawable.intrinsicHeight.coerceIn(48, 512) else 108
+                val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+                val canvas = android.graphics.Canvas(bmp)
+                drawable.setBounds(0, 0, w, h)
+                drawable.draw(canvas)
+                bmp.asImageBitmap()
+            } else null
+        } catch (_: android.content.res.Resources.NotFoundException) {
+            null
+        } catch (_: IllegalArgumentException) {
+            null
+        } catch (_: OutOfMemoryError) {
+            null
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    if (vectorBitmap != null && !vectorBitmap.asAndroidBitmap().isRecycled) {
+        Image(
+            bitmap = vectorBitmap,
             contentDescription = contentDescription,
             contentScale = ContentScale.Fit,
             modifier = modifier

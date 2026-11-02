@@ -40,7 +40,8 @@ enum class SettingsSubscreen {
     FOCUS_MODE,
     HIDDEN_APPS,
     SCREEN_TIME,
-    BACKUP_RESTORE
+    BACKUP_RESTORE,
+    ABOUT
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -112,6 +113,7 @@ fun SettingsScreen(
                             SettingsSubscreen.HIDDEN_APPS -> "Hidden Applications"
                             SettingsSubscreen.SCREEN_TIME -> "Screen Time Dashboard"
                             SettingsSubscreen.BACKUP_RESTORE -> "Backup & Restore"
+                            SettingsSubscreen.ABOUT -> "About NovaForge"
                         },
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Medium
@@ -227,6 +229,9 @@ fun SettingsScreen(
                         onRestore = onRestoreBackup
                     )
                 }
+                SettingsSubscreen.ABOUT -> {
+                    AboutNovaForgeSubscreen()
+                }
             }
         }
     }
@@ -266,6 +271,7 @@ private fun MainSettingsList(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 10.dp, bottom = 4.dp)
+                    .clickable { onNavigate(SettingsSubscreen.ABOUT) }
             ) {
                 Row(
                     modifier = Modifier
@@ -299,6 +305,11 @@ private fun MainSettingsList(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                    Icon(
+                        Icons.Default.ChevronRight,
+                        contentDescription = "View About",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         }
@@ -345,7 +356,8 @@ private fun MainSettingsList(
             Triple("Focus Mode", "Reduce distractions with whitelisted apps", SettingsSubscreen.FOCUS_MODE),
             Triple("Hidden Apps", "PIN protected applications vault", SettingsSubscreen.HIDDEN_APPS),
             Triple("Screen Time Dashboard", "Real app usage metrics via UsageStatsManager", SettingsSubscreen.SCREEN_TIME),
-            Triple("Backup & Restore", "Export and import your launcher layout", SettingsSubscreen.BACKUP_RESTORE)
+            Triple("Backup & Restore", "Export and import your launcher layout", SettingsSubscreen.BACKUP_RESTORE),
+            Triple("About NovaForge", "Version v1.2.0, brand emblem, local-first mission & architecture", SettingsSubscreen.ABOUT)
         )
 
         items(menuItems) { (title, subtitle, subscreen) ->
@@ -1058,4 +1070,167 @@ private fun ToggleOptionRow(
         )
     }
 }
+
+/**
+ * Dedicated About Screen displaying official NovaForge cosmic identity,
+ * safe multi-tier logo verification, architecture details, and local-first policies.
+ */
+@Composable
+private fun AboutNovaForgeSubscreen() {
+    var showProceduralCanvasOnly by remember { mutableStateOf(false) }
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 20.dp, vertical = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        item {
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Official NovaForge Logo with safe multi-tier fallback
+            Box(
+                modifier = Modifier
+                    .size(92.dp)
+                    .clip(RoundedCornerShape(24.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                if (showProceduralCanvasOnly) {
+                    com.novaforge.launcher.ui.common.NovaForgeCanvasProceduralLogo(
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    NovaForgeLogoImage(
+                        contentDescription = "Official NovaForge Launcher Logo",
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Text(
+                text = "NovaForge Launcher",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Text(
+                text = "v1.2.0 Cosmic Orbit Edition",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary,
+                letterSpacing = 1.sp
+            )
+
+            Text(
+                text = "Minimalist Workspace Architecture",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            OutlinedButton(
+                onClick = { showProceduralCanvasOnly = !showProceduralCanvasOnly },
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier.height(34.dp)
+            ) {
+                Text(
+                    text = if (showProceduralCanvasOnly) "Viewing: Procedural Canvas Logo" else "Viewing: Multi-Tier Logo (Tap to test Canvas)",
+                    fontSize = 11.sp
+                )
+            }
+        }
+
+        item {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)),
+                shape = RoundedCornerShape(18.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Verified, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Logo Safe Rendering Architecture", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Text(
+                        text = "To guarantee zero startup crashes and prevent Logcat ResourceResolutionException on any Android device:\n" +
+                            "• Tier 1: ARGB_8888 bitmap decode of official raster asset.\n" +
+                            "• Tier 2: Safe VectorDrawable (ic_novaforge_vector_logo.xml) fallback.\n" +
+                            "• Tier 3: Zero-dependency Jetpack Compose Canvas procedural renderer replicating the exact horizon arc, cyan orbit ring, metallic N, and orbital star.",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        lineHeight = 18.sp
+                    )
+                }
+            }
+        }
+
+        item {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)),
+                shape = RoundedCornerShape(18.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Shield, contentDescription = null, tint = Color(0xFF10B981), modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Permanent Local-First Policy", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Text(
+                        text = "• 100% Free: No subscriptions, no premium tiers, no paywalls.\n" +
+                            "• Zero Advertisements: Absolutely no banner ads, interstitials, or tracking.\n" +
+                            "• No Paid APIs: All intelligence, automation, and recommendations are local.\n" +
+                            "• Private by Design: No cloud accounts required; configurations stay on device.",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        lineHeight = 18.sp
+                    )
+                }
+            }
+        }
+
+        item {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)),
+                shape = RoundedCornerShape(18.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Code, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Signature Engineering Systems", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Text(
+                        text = "• Command Macros & Fast Launcher Action Bar\n" +
+                            "• Context Rings: Circular radial menu system with haptic feedback\n" +
+                            "• Animated Icon Engine: GIF, WebP & Lottie support with battery saver\n" +
+                            "• Time Capsule: Comprehensive workspace snapshot & restore engine\n" +
+                            "• Workspace Memory: Dynamic dock and glance states per space",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        lineHeight = 18.sp
+                    )
+                }
+            }
+        }
+
+        item {
+            Spacer(modifier = Modifier.height(10.dp))
+            Text(
+                text = "NovaForge Launcher • Built with Kotlin & Jetpack Compose",
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+            )
+            Spacer(modifier = Modifier.height(20.dp))
+        }
+    }
+}
+
 

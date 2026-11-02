@@ -284,6 +284,7 @@ class LauncherViewModel(application: Application) : AndroidViewModel(application
         CommandAction("/animated-icons", "Animated Icon Engine", "Configure battery engine and app assignments", "Launcher"),
         CommandAction("/rings", "Context Rings Designer", "Configure radial command system & bindings", "Launcher"),
         CommandAction("/settings", "Launcher Settings", "Themes, icons, gestures, backup & restore", "Launcher"),
+        CommandAction("/about", "About NovaForge", "Version info, brand emblem & architecture", "Launcher"),
         CommandAction("/wifi", "Wi-Fi Settings", "Open Android network & internet settings", "System"),
         CommandAction("/bluetooth", "Bluetooth Settings", "Open Android connected devices settings", "System"),
         CommandAction("/battery", "Battery Saver", "Open battery usage & power settings", "System"),

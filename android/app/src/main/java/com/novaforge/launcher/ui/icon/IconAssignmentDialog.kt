@@ -18,6 +18,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.Image
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import com.novaforge.launcher.data.AppIconManager
 import com.novaforge.launcher.data.model.AppItem
 import com.novaforge.launcher.icon.*
 
@@ -33,6 +38,7 @@ fun IconAssignmentDialog(
     onRemoveAssignment: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val context = LocalContext.current
     var searchQuery by remember { mutableStateOf("") }
     var filterMode by remember { mutableStateOf("All") } // "All", "Assigned", "Unassigned"
     var selectedAppPackage by remember { mutableStateOf(initialAppPackage ?: allApps.firstOrNull()?.packageName ?: "") }
@@ -139,11 +145,14 @@ fun IconAssignmentDialog(
                                 size = 38.dp
                             )
                         } else {
-                            Text(
-                                text = selectedApp?.label?.take(1) ?: "A",
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 18.sp
+                            val appBmp = remember(selectedAppPackage) {
+                                AppIconManager.getAppIconBitmap(context, selectedAppPackage, 144)
+                            }
+                            Image(
+                                bitmap = appBmp.asImageBitmap(),
+                                contentDescription = selectedApp?.label,
+                                modifier = Modifier.fillMaxSize().padding(6.dp),
+                                contentScale = ContentScale.Fit
                             )
                         }
                     }
@@ -337,15 +346,17 @@ fun IconAssignmentDialog(
                             .padding(horizontal = 8.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Box(
+                        val appBmp = remember(app.packageName) {
+                            AppIconManager.getAppIconBitmap(context, app.packageName, 96)
+                        }
+                        Image(
+                            bitmap = appBmp.asImageBitmap(),
+                            contentDescription = app.label,
                             modifier = Modifier
                                 .size(28.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(Color(app.colorHex)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(app.label.take(1), color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        }
+                                .clip(RoundedCornerShape(8.dp)),
+                            contentScale = ContentScale.Fit
+                        )
                         Spacer(modifier = Modifier.width(10.dp))
                         Text(
                             text = app.label,

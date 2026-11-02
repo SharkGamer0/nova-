@@ -41,7 +41,6 @@ class AppRepository(
             val appList = resolveInfos.mapNotNull { ri ->
                 val pkg = ri.activityInfo.packageName
                 val label = ri.loadLabel(pm).toString()
-                if (pkg == context.packageName) return@mapNotNull null // Exclude launcher itself
 
                 val cat = resolveCategory(ri.activityInfo.applicationInfo, pkg)
                 val isFav = favs.contains(pkg)

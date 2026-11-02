@@ -110,7 +110,7 @@ fun RenderNativeOrFallbackIcon(
         AppIconManager.getAppIconBitmap(context, packageName)
     }
 
-    if (realBitmap != null) {
+    if (realBitmap != null && !realBitmap.isRecycled) {
         Image(
             bitmap = realBitmap.asImageBitmap(),
             contentDescription = label,
@@ -118,14 +118,7 @@ fun RenderNativeOrFallbackIcon(
             contentScale = ContentScale.Fit
         )
     } else {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(fallbackColor),
-            contentAlignment = Alignment.Center
-        ) {
-            RenderFallbackGlyph(label = label, size = size)
-        }
+        NeutralAndroidFallbackIcon(size = size)
     }
 }
 
@@ -258,18 +251,49 @@ fun RenderLottieJsonAnimation(
             isPlaying = isPlaybackAllowed
         )
     } else {
-        RenderFallbackGlyph(label = fallbackLabel, size = size)
+        NeutralAndroidFallbackIcon(size = size)
     }
 }
 
+/**
+ * Official neutral Android fallback icon.
+ * Used when an app is missing, uninstalled, or restricted.
+ * Never displays an alphabet character, artificial letter, or text placeholder.
+ */
 @Composable
-fun RenderFallbackGlyph(label: String, size: Dp) {
-    Text(
-        text = label.take(1).uppercase(),
-        color = Color.White,
-        fontWeight = FontWeight.Bold,
-        fontSize = if (size > 40.dp) 18.sp else 14.sp
-    )
+fun NeutralAndroidFallbackIcon(size: Dp) {
+    val context = LocalContext.current
+    val fallbackBitmap = remember {
+        AppIconManager.getNeutralFallbackIcon(context)
+    }
+
+    if (fallbackBitmap != null && !fallbackBitmap.isRecycled) {
+        Image(
+            bitmap = fallbackBitmap.asImageBitmap(),
+            contentDescription = "Application",
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Fit
+        )
+    } else {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFF1E293B)),
+            contentAlignment = Alignment.Center
+        ) {
+            Canvas(modifier = Modifier.size(size * 0.5f)) {
+                val w = this.size.width
+                val r = w * 0.18f
+                val spacing = w * 0.28f
+                val cx = w * 0.5f
+                val cy = this.size.height * 0.5f
+                drawCircle(color = Color(0xFF94A3B8), radius = r, center = Offset(cx - spacing, cy - spacing))
+                drawCircle(color = Color(0xFF94A3B8), radius = r, center = Offset(cx + spacing, cy - spacing))
+                drawCircle(color = Color(0xFF94A3B8), radius = r, center = Offset(cx - spacing, cy + spacing))
+                drawCircle(color = Color(0xFF94A3B8), radius = r, center = Offset(cx + spacing, cy + spacing))
+            }
+        }
+    }
 }
 
 @Composable
